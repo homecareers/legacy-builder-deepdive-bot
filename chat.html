@@ -153,14 +153,14 @@
 
   <script>
     const chat = document.getElementById('chat');
-    const BACKEND_URL = "https://legacy-builder-deepdive-bot-production.up.railway.app/"; // TODO: replace with Railway URL
+    const BACKEND_URL = "https://legacy-builder-deepdive-bot-production.up.railway.app/submit";
 
     // ---------------------- Deep-Dive Questions (7–14) ---------------------- //
     const surveyFlow = [
       {
         id: "q7_history",
         type: "text",
-        question: "Ever played in business territory before? Drop anything you’ve tried (affiliate, coaching, network marketing, content, etc.) — or say “Never tried it” if you’re brand new.",
+        question: "Ever played in business territory before? Drop anything you've tried (affiliate, coaching, network marketing, content, etc.) — or say "Never tried it" if you're brand new.",
         placeholder: "Give me the quick version of your business story so far."
       },
       {
@@ -177,14 +177,14 @@
       {
         id: "q8a_style_notes",
         type: "text",
-        question: "Anything you want me to know about your style when you’re chasing a goal? (Optional, but it helps me coach you cleaner.)",
-        placeholder: "Example: “I overthink.” “I need reminders.” “Once I commit, I’m locked in.”"
+        question: "Anything you want me to know about your style when you're chasing a goal? (Optional, but it helps me coach you cleaner.)",
+        placeholder: "Example: "I overthink." "I need reminders." "Once I commit, I'm locked in.""
       },
       {
         id: "q9_obstacles",
         type: "text",
-        question: "When you’ve chased big dreams before — in business or wellness — what usually tripped you up? Time, fear, energy, guidance, something else?",
-        placeholder: "Be real here so we don’t repeat the same pattern."
+        question: "When you've chased big dreams before — in business or wellness — what usually tripped you up? Time, fear, energy, guidance, something else?",
+        placeholder: "Be real here so we don't repeat the same pattern."
       },
       {
         id: "q10_personal_wins",
@@ -207,13 +207,13 @@
       {
         id: "q13_best_phone",
         type: "phone",
-        question: "What’s your best phone number in case we need to send you important updates or next steps?",
+        question: "What's your best phone number in case we need to send you important updates or next steps?",
         placeholder: "Drop your mobile number here."
       },
       {
         id: "q14_best_email",
         type: "email",
-        question: "And what’s the best email for your custom Legacy Builder plan to land in?",
+        question: "And what's the best email for your custom Legacy Builder plan to land in?",
         placeholder: "Best email for your plan."
       }
     ];
@@ -303,6 +303,16 @@
 
       const value = input.value.trim();
       if (!value) {
+        const q = surveyFlow[step];
+        // Allow optional fields to be skipped
+        if (q.id === "q8a_style_notes") {
+          showUserMessage("(Skipped)");
+          answers[q.id] = "";
+          input.parentElement.remove();
+          step++;
+          setTimeout(askNext, 400);
+          return;
+        }
         showBotMessage("Give me a quick line here so I can dial this in with you.");
         return;
       }
@@ -322,7 +332,7 @@
       const phone = (answers["q13_best_phone"] || "").trim();
 
       if (!email) {
-        showBotMessage("I’ll need your best email so we know where to send your Legacy Builder plan.");
+        showBotMessage("I'll need your best email so we know where to send your Legacy Builder plan.");
         return;
       }
 
@@ -335,7 +345,8 @@
       const payload = {
         email: email,
         phone: phone,
-        answers: answers
+        answers: answers,
+        survey_type: "deepdive"  // Flag this as deep-dive
       };
 
       fetch(BACKEND_URL, {
@@ -347,13 +358,16 @@
       .then(data => {
         hideLoading();
         if (data.redirect_url) {
-          window.top.location.href = data.redirect_url;
+          showBotMessage("Perfect! Taking you to your personalized Legacy Builder plan now...");
+          setTimeout(() => {
+            window.top.location.href = data.redirect_url;
+          }, 1500);
         } else {
           showBotMessage("Something glitched on the handoff. Refresh and try again.");
         }
       })
       .catch(err => {
-        console.error(err);
+        console.error("Full error:", err);
         hideLoading();
         showBotMessage("There was an issue sending your answers. Refresh and try once more.");
       });
@@ -361,7 +375,7 @@
 
     // ---------------------- Intro ---------------------- //
     window.onload = () => {
-      showBotMessage("Alright, legend — that first round gave me your big picture. Now let’s lock in the details for your Legacy Builder plan.");
+      showBotMessage("Alright, legend — that first round gave me your big picture. Now let's lock in the details for your Legacy Builder plan.");
       setTimeout(() => {
         showBotMessage("These next questions are quick, but they help me tailor this with you — not at you.");
         setTimeout(askNext, 1200);

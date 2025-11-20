@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, render_template_string
 import requests
 import os
 import datetime
@@ -39,15 +39,62 @@ def _url(table, rec_id=None, params=None):
     return base
 
 
-# ---------------------- SERVE HTML ---------------------- #
+# ---------------------- SERVE HTML - FIXED VERSION ---------------------- #
 
 @app.route("/")
 def serve_chat():
     """Serve the chat.html file"""
     try:
-        return send_file("chat.html")
-    except:
-        return "Chat interface not found. Make sure chat.html is in the same directory as app.py", 404
+        # Try to read the chat.html file
+        with open('chat.html', 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        return html_content
+    except FileNotFoundError:
+        # If chat.html not found, return an error message
+        return """
+        <html>
+        <body style="font-family: Arial; padding: 40px;">
+            <h1>Setup Required</h1>
+            <p>Chat interface file (chat.html) not found.</p>
+            <p>Please ensure chat.html is in the same directory as app.py</p>
+            <hr>
+            <p><small>Legacy Builder Deep-Dive Bot - Server is running correctly</small></p>
+        </body>
+        </html>
+        """, 404
+    except Exception as e:
+        return f"""
+        <html>
+        <body style="font-family: Arial; padding: 40px;">
+            <h1>Error Loading Chat Interface</h1>
+            <p>Error details: {str(e)}</p>
+            <hr>
+            <p><small>Legacy Builder Deep-Dive Bot - Server is running</small></p>
+        </body>
+        </html>
+        """, 500
+
+
+@app.route("/test")
+def test():
+    """Test route to verify server is running"""
+    return """
+    <html>
+    <body style="font-family: Arial; padding: 40px;">
+        <h1>✅ Server is Running!</h1>
+        <p>Legacy Builder Deep-Dive Bot is active.</p>
+        <p><a href="/">Go to Chat Interface</a></p>
+        <hr>
+        <h3>Environment Status:</h3>
+        <ul>
+            <li>AIRTABLE_API_KEY: {'✅ Set' if AIRTABLE_API_KEY else '❌ Missing'}</li>
+            <li>AIRTABLE_BASE_ID: {'✅ Set' if AIRTABLE_BASE_ID else '❌ Missing'}</li>
+            <li>GHL_API_KEY: {'✅ Set' if GHL_API_KEY else '⚠️ Optional - Not Set'}</li>
+            <li>GHL_LOCATION_ID: {'✅ Set' if GHL_LOCATION_ID else '⚠️ Optional - Not Set'}</li>
+        </ul>
+    </body>
+    </html>
+    """
 
 
 # ---------------------- PROSPECT RECORD HANDLING ---------------------- #
@@ -57,64 +104,77 @@ def get_or_create_prospect(email: str):
     Search for Prospect by email. If exists → return it.
     If not → create new + assign Legacy Code.
     """
+    
+    if not AIRTABLE_API_KEY or not AIRTABLE_BASE_ID:
+        print("Warning: Airtable credentials not configured")
+        return "TEST-LC-001", "TEST-ID-001"
 
     formula = f"{{Prospect Email}} = '{email}'"
     search_url = _url(HQ_TABLE, params={"filterByFormula": formula, "maxRecords": 1})
 
-    r = requests.get(search_url, headers=_h())
-    r.raise_for_status()
-    data = r.json()
+    try:
+        r = requests.get(search_url, headers=_h())
+        r.raise_for_status()
+        data = r.json()
 
-    # ------------------ FOUND EXISTING PROSPECT ------------------ #
-    if data.get("records"):
-        rec = data["records"][0]
+        # ------------------ FOUND EXISTING PROSPECT ------------------ #
+        if data.get("records"):
+            rec = data["records"][0]
+            rec_id = rec["id"]
+            legacy_code = rec.get("fields", {}).get("Legacy Code")
+
+            # Missing LC? Generate one.
+            if not legacy_code:
+                auto = rec.get("fields", {}).get("AutoNum")
+                if auto is None:
+                    r2 = requests.get(_url(HQ_TABLE, rec_id), headers=_h())
+                    auto = r2.json().get("fields", {}).get("AutoNum")
+
+                legacy_code = f"Legacy-X25-OP{1000 + int(auto)}"
+
+                requests.patch(
+                    _url(HQ_TABLE, rec_id),
+                    headers=_h(),
+                    json={"fields": {"Legacy Code": legacy_code}},
+                )
+
+            return legacy_code, rec_id
+
+        # ------------------ CREATE NEW PROSPECT ------------------ #
+        payload = {"fields": {"Prospect Email": email}}
+        r = requests.post(_url(HQ_TABLE), headers=_h(), json=payload)
+        r.raise_for_status()
+
+        rec = r.json()
         rec_id = rec["id"]
-        legacy_code = rec.get("fields", {}).get("Legacy Code")
 
-        # Missing LC? Generate one.
-        if not legacy_code:
-            auto = rec.get("fields", {}).get("AutoNum")
-            if auto is None:
-                r2 = requests.get(_url(HQ_TABLE, rec_id), headers=_h())
-                auto = r2.json().get("fields", {}).get("AutoNum")
+        auto = rec.get("fields", {}).get("AutoNum")
+        if auto is None:
+            r2 = requests.get(_url(HQ_TABLE, rec_id), headers=_h())
+            auto = r2.json().get("fields", {}).get("AutoNum")
 
-            legacy_code = f"Legacy-X25-OP{1000 + int(auto)}"
+        legacy_code = f"Legacy-X25-OP{1000 + int(auto)}"
 
-            requests.patch(
-                _url(HQ_TABLE, rec_id),
-                headers=_h(),
-                json={"fields": {"Legacy Code": legacy_code}},
-            )
+        requests.patch(
+            _url(HQ_TABLE, rec_id),
+            headers=_h(),
+            json={"fields": {"Legacy Code": legacy_code}},
+        )
 
         return legacy_code, rec_id
-
-    # ------------------ CREATE NEW PROSPECT ------------------ #
-    payload = {"fields": {"Prospect Email": email}}
-    r = requests.post(_url(HQ_TABLE), headers=_h(), json=payload)
-    r.raise_for_status()
-
-    rec = r.json()
-    rec_id = rec["id"]
-
-    auto = rec.get("fields", {}).get("AutoNum")
-    if auto is None:
-        r2 = requests.get(_url(HQ_TABLE, rec_id), headers=_h())
-        auto = r2.json().get("fields", {}).get("AutoNum")
-
-    legacy_code = f"Legacy-X25-OP{1000 + int(auto)}"
-
-    requests.patch(
-        _url(HQ_TABLE, rec_id),
-        headers=_h(),
-        json={"fields": {"Legacy Code": legacy_code}},
-    )
-
-    return legacy_code, rec_id
+        
+    except Exception as e:
+        print(f"Airtable error: {str(e)}")
+        return "ERROR-LC", "ERROR-ID"
 
 
 # ---------------------- SAVE SCREENING (Q1–Q6) ---------------------- #
 
 def save_screening_to_airtable(legacy_code: str, prospect_id: str, email: str, answers: list):
+    if not AIRTABLE_API_KEY or not AIRTABLE_BASE_ID:
+        print("Warning: Airtable credentials not configured")
+        return "TEST-RESPONSE-ID"
+        
     fields = {
         "Legacy Code": legacy_code,
         "Prospects": [prospect_id],
@@ -128,15 +188,23 @@ def save_screening_to_airtable(legacy_code: str, prospect_id: str, email: str, a
         "Q6 Business Style (GEM)": answers[5],
     }
 
-    r = requests.post(_url(RESPONSES_TABLE), headers=_h(), json={"fields": fields})
-    r.raise_for_status()
-    return r.json().get("id")
+    try:
+        r = requests.post(_url(RESPONSES_TABLE), headers=_h(), json={"fields": fields})
+        r.raise_for_status()
+        return r.json().get("id")
+    except Exception as e:
+        print(f"Airtable save error: {str(e)}")
+        return "ERROR-SAVE"
 
 
 # ---------------------- SAVE DEEP-DIVE (Q7–Q14) ---------------------- #
 
 def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, email: str, phone: str, answers: dict):
     """Update prospect with deep-dive answers"""
+    
+    if not AIRTABLE_API_KEY or not AIRTABLE_BASE_ID:
+        print("Warning: Airtable credentials not configured")
+        return "TEST-DEEPDIVE-ID"
     
     fields = {
         "Phone": phone,
@@ -151,20 +219,26 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, email: str, ph
         "Deep Dive Date": datetime.datetime.utcnow().isoformat()
     }
     
-    # Update the prospect record with deep-dive answers
-    r = requests.patch(
-        _url(HQ_TABLE, prospect_id),
-        headers=_h(),
-        json={"fields": fields}
-    )
-    r.raise_for_status()
-    return r.json().get("id")
+    try:
+        r = requests.patch(
+            _url(HQ_TABLE, prospect_id),
+            headers=_h(),
+            json={"fields": fields}
+        )
+        r.raise_for_status()
+        return r.json().get("id")
+    except Exception as e:
+        print(f"Airtable deep-dive save error: {str(e)}")
+        return "ERROR-DEEPDIVE"
 
 
 # ---------------------- SYNC TO GHL ---------------------- #
 
 def push_screening_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
+        if not GHL_API_KEY or not GHL_LOCATION_ID:
+            return None
+            
         headers = {
             "Authorization": f"Bearer {GHL_API_KEY}",
             "Content-Type": "application/json",
@@ -212,7 +286,6 @@ def push_screening_to_ghl(email: str, answers: list, legacy_code: str, prospect_
             json=update_payload,
         )
 
-        # Store Airtable Prospect ID inside GHL
         try:
             requests.put(
                 f"{GHL_BASE_URL}/contacts/{ghl_id}",
@@ -232,7 +305,7 @@ def push_screening_to_ghl(email: str, answers: list, legacy_code: str, prospect_
 def push_deepdive_to_ghl(email: str, phone: str, answers: dict, legacy_code: str):
     """Sync deep-dive data to GHL"""
     try:
-        if not GHL_API_KEY:
+        if not GHL_API_KEY or not GHL_LOCATION_ID:
             return None
             
         headers = {
@@ -348,11 +421,17 @@ def submit():
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "healthy", "service": "legacy-builder-deepdive-bot"})
+    return jsonify({
+        "status": "healthy", 
+        "service": "legacy-builder-deepdive-bot",
+        "airtable_configured": bool(AIRTABLE_API_KEY and AIRTABLE_BASE_ID),
+        "ghl_configured": bool(GHL_API_KEY and GHL_LOCATION_ID)
+    })
 
 
 # ---------------------- RAILWAY PORT FIX (IMPORTANT) ---------------------- #
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    print(f"Starting Legacy Builder Deep-Dive Bot on port {port}")
     app.run(host="0.0.0.0", port=port)

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import requests
 import os
 import datetime
@@ -7,7 +7,6 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-
 
 # ---------------------- CONFIG ---------------------- #
 
@@ -38,6 +37,17 @@ def _url(table, rec_id=None, params=None):
     if params:
         return f"{base}?{urllib.parse.urlencode(params)}"
     return base
+
+
+# ---------------------- SERVE HTML ---------------------- #
+
+@app.route("/")
+def serve_chat():
+    """Serve the chat.html file"""
+    try:
+        return send_file("chat.html")
+    except:
+        return "Chat interface not found. Make sure chat.html is in the same directory as app.py", 404
 
 
 # ---------------------- PROSPECT RECORD HANDLING ---------------------- #
@@ -102,7 +112,7 @@ def get_or_create_prospect(email: str):
     return legacy_code, rec_id
 
 
-# ---------------------- SAVE SURVEY (Q1–Q6) ---------------------- #
+# ---------------------- SAVE SCREENING (Q1–Q6) ---------------------- #
 
 def save_screening_to_airtable(legacy_code: str, prospect_id: str, email: str, answers: list):
     fields = {
@@ -119,6 +129,34 @@ def save_screening_to_airtable(legacy_code: str, prospect_id: str, email: str, a
     }
 
     r = requests.post(_url(RESPONSES_TABLE), headers=_h(), json={"fields": fields})
+    r.raise_for_status()
+    return r.json().get("id")
+
+
+# ---------------------- SAVE DEEP-DIVE (Q7–Q14) ---------------------- #
+
+def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, email: str, phone: str, answers: dict):
+    """Update prospect with deep-dive answers"""
+    
+    fields = {
+        "Phone": phone,
+        "Q7 Business History": answers.get("q7_history", ""),
+        "Q8 Goal Style": answers.get("q8_goal_style", ""),
+        "Q8a Style Notes": answers.get("q8a_style_notes", ""),
+        "Q9 Obstacles": answers.get("q9_obstacles", ""),
+        "Q10 Personal Wins": answers.get("q10_personal_wins", ""),
+        "Q11 Ideal Coach": answers.get("q11_ideal_coach", ""),
+        "Q12 Online Presence": answers.get("q12_online_presence", ""),
+        "Deep Dive Completed": True,
+        "Deep Dive Date": datetime.datetime.utcnow().isoformat()
+    }
+    
+    # Update the prospect record with deep-dive answers
+    r = requests.patch(
+        _url(HQ_TABLE, prospect_id),
+        headers=_h(),
+        json={"fields": fields}
+    )
     r.raise_for_status()
     return r.json().get("id")
 
@@ -191,6 +229,62 @@ def push_screening_to_ghl(email: str, answers: list, legacy_code: str, prospect_
         return None
 
 
+def push_deepdive_to_ghl(email: str, phone: str, answers: dict, legacy_code: str):
+    """Sync deep-dive data to GHL"""
+    try:
+        if not GHL_API_KEY:
+            return None
+            
+        headers = {
+            "Authorization": f"Bearer {GHL_API_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        lookup = requests.get(
+            f"{GHL_BASE_URL}/contacts/lookup",
+            headers=headers,
+            params={"email": email, "locationId": GHL_LOCATION_ID},
+        ).json()
+
+        contact = None
+        if "contacts" in lookup and lookup["contacts"]:
+            contact = lookup["contacts"][0]
+        elif "contact" in lookup:
+            contact = lookup["contact"]
+
+        if not contact:
+            return None
+
+        ghl_id = contact.get("id")
+
+        update_payload = {
+            "tags": ["legacy deepdive completed"],
+            "phone": phone,
+            "customField": {
+                "q7_business_history": answers.get("q7_history", ""),
+                "q8_goal_style": answers.get("q8_goal_style", ""),
+                "q8a_style_notes": answers.get("q8a_style_notes", ""),
+                "q9_obstacles": answers.get("q9_obstacles", ""),
+                "q10_personal_wins": answers.get("q10_personal_wins", ""),
+                "q11_ideal_coach": answers.get("q11_ideal_coach", ""),
+                "q12_online_presence": answers.get("q12_online_presence", ""),
+                "deepdive_completed": "true",
+            },
+        }
+
+        requests.put(
+            f"{GHL_BASE_URL}/contacts/{ghl_id}",
+            headers=headers,
+            json=update_payload,
+        )
+
+        return contact.get("assignedUserId") or contact.get("userId")
+
+    except Exception as e:
+        print("GHL Deep-Dive Sync Error:", e)
+        return None
+
+
 # ---------------------- ROUTE: /submit ---------------------- #
 
 @app.route("/submit", methods=["POST"])
@@ -198,31 +292,54 @@ def submit():
     try:
         data = request.json or {}
         email = (data.get("email") or "").strip()
-        answers = data.get("answers") or []
+        phone = data.get("phone") or ""
+        answers_raw = data.get("answers") or {}
+        survey_type = data.get("survey_type") or "screening"
 
         if not email:
             return jsonify({"error": "Missing email"}), 400
 
-        # Guarantee 6 answers
-        while len(answers) < 6:
-            answers.append("No response")
-
-        # Build prospect
+        # Get or create prospect
         legacy_code, prospect_id = get_or_create_prospect(email)
 
-        # Save to Airtable
-        save_screening_to_airtable(legacy_code, prospect_id, email, answers)
-
-        # Sync to GHL
-        assigned_user_id = push_screening_to_ghl(email, answers, legacy_code, prospect_id)
-
-        # Build redirect
-        if assigned_user_id:
-            redirect_url = f"{NEXTSTEP_URL}?uid={assigned_user_id}"
+        # Check if this is deep-dive or screening
+        if survey_type == "deepdive" or isinstance(answers_raw, dict):
+            # DEEP-DIVE SUBMISSION (Q7-Q14)
+            print(f"Processing deep-dive for {email}")
+            
+            # Save to Airtable
+            save_deepdive_to_airtable(legacy_code, prospect_id, email, phone, answers_raw)
+            
+            # Sync to GHL
+            assigned_user_id = push_deepdive_to_ghl(email, phone, answers_raw, legacy_code)
+            
+            # Build redirect
+            if assigned_user_id:
+                redirect_url = f"{NEXTSTEP_URL}?uid={assigned_user_id}&deepdive=true"
+            else:
+                redirect_url = f"{NEXTSTEP_URL}?deepdive=true"
+                
         else:
-            redirect_url = NEXTSTEP_URL
+            # ORIGINAL SCREENING (Q1-Q6)
+            print(f"Processing screening for {email}")
+            
+            answers = answers_raw if isinstance(answers_raw, list) else []
+            while len(answers) < 6:
+                answers.append("No response")
+                
+            # Save to Airtable
+            save_screening_to_airtable(legacy_code, prospect_id, email, answers)
+            
+            # Sync to GHL
+            assigned_user_id = push_screening_to_ghl(email, answers, legacy_code, prospect_id)
+            
+            # Build redirect
+            if assigned_user_id:
+                redirect_url = f"{NEXTSTEP_URL}?uid={assigned_user_id}"
+            else:
+                redirect_url = NEXTSTEP_URL
 
-        return jsonify({"redirect_url": redirect_url})
+        return jsonify({"redirect_url": redirect_url, "legacy_code": legacy_code})
 
     except Exception as e:
         print("Submit Error:", e)
@@ -231,7 +348,7 @@ def submit():
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "healthy"})
+    return jsonify({"status": "healthy", "service": "legacy-builder-deepdive-bot"})
 
 
 # ---------------------- RAILWAY PORT FIX (IMPORTANT) ---------------------- #

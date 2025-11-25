@@ -64,7 +64,6 @@
       box-shadow: 0 0 18px rgba(212,167,44,0.45);
     }
 
-    /* Selected state for multi-select */
     .options button.selected {
       background: rgba(212,167,44,0.15);
       border-color: #D4A72C;
@@ -127,12 +126,6 @@
       box-shadow: 0 0 14px rgba(212,167,44,0.55);
     }
 
-    .help {
-      font-size: 12px;
-      opacity: 0.8;
-      margin-top: 6px;
-    }
-
     .inline-other {
       margin-top: 12px;
       padding: 12px;
@@ -148,10 +141,17 @@
       color: #ccc;
     }
 
+    .help {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 6px;
+    }
+
     .loading {
       color: #D4A72C;
       font-style: italic;
     }
+
     .loading::after {
       content: "...";
       animation: dots 1.5s infinite;
@@ -161,6 +161,7 @@
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
     @keyframes dots {
       0% { content: ""; }
       33% { content: "."; }
@@ -177,263 +178,227 @@
 </head>
 
 <body>
-  <div class="chat-box" id="chat"></div>
+<div class="chat-box" id="chat"></div>
 
-  <script>
-    const chat = document.getElementById('chat');
-    const BACKEND_URL = "/submit";
+<script>
+  const chat = document.getElementById('chat');
+  const BACKEND_URL = "/submit";
 
-    // ---------------------- Deep-Dive Questions (NO PHONE) ---------------------- //
-    const surveyFlow = [
-      {
-        id: "q7_history",
-        type: "multi",
-        question:
-          "Ever played in business territory before? Tap EVERYTHING you've tried — or select brand new.",
-        help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
-        options: [
-          "Affiliate / referral marketing",
-          "Coaching / consulting",
-          "Network marketing / direct selling",
-          "Content creator / influencer path",
-          "E-commerce / selling products online",
-          "Freelance / service-based work",
-          "Forex / crypto / trading style plays",
-          "Never tried anything — I'm brand new",
-          "Other (tell me below)"
-        ],
-        otherValue: "Other (tell me below)"
-      },
-      {
-        id: "q8_goal_style",
-        type: "single",
-        question: "When you go after a big goal, which style feels MOST like you?",
-        options: [
-          "I want a clear step-by-step game plan.",
-          "I move fast and like quick wins to stay fired up.",
-          "I like deeper strategy and long-term plays.",
-          "I do best when someone checks in and keeps me accountable."
-        ]
-      },
-      {
-        id: "q8a_style_notes",
-        type: "text",
-        question:
-          "Anything you want me to know about your style when you're chasing a goal? (Optional, but it helps me coach you cleaner.)",
-        placeholder:
-          "Example: \"I overthink.\" \"I need reminders.\" \"Once I commit, I'm locked in.\""
-      },
-      {
-        id: "q9_obstacles",
-        type: "multi",
-        question:
-          "When you've chased big dreams before — what usually tripped you up?",
-        help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
-        options: [
-          "No clear system",
-          "No real mentor",
-          "Overthinking / second-guessing",
-          "Life chaos / inconsistent schedule",
-          "Confidence dips",
-          "Energy / health not dialed in",
-          "Tried alone too long",
-          "Fear of being seen / judged",
-          "I've never seriously chased a big goal yet",
-          "Other (tell me below)"
-        ],
-        otherValue: "Other (tell me below)"
-      },
-      {
-        id: "q10_personal_wins",
-        type: "multi",
-        question:
-          "Outside of money, what personal wins matter most to you in the next 6–12 months?",
-        help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
-        options: [
-          "More confidence",
-          "More energy daily",
-          "Time freedom",
-          "Stronger leadership / self-discipline",
-          "Being a better example for family",
-          "Calm + clarity (less mental noise)",
-          "Community / belonging",
-          "A routine I can actually sustain",
-          "Other (tell me below)"
-        ],
-        otherValue: "Other (tell me below)"
-      },
-      {
-        id: "q11_ideal_coach",
-        type: "single",
-        question:
-          "Picture your ideal coach. What do you want MOST from them?",
-        options: [
-          "A clear step-by-step plan",
-          "Accountability + check-ins",
-          "Straight talk / high standards",
-          "Strategy + long-term vision",
-          "Community + team rhythm",
-          "Other (tell me below)"
-        ],
-        otherValue: "Other (tell me below)"
-      },
-      {
-        id: "q12_online_presence",
-        type: "text",
-        question:
-          "Where do you show up online right now — and how big is your audience there?",
-        placeholder:
-          "Example: TikTok ~300, Instagram ~1,200, Facebook personal page only, etc."
-      },
-      {
-        id: "q14_best_email",
-        type: "email",
-        question:
-          "And what's the best email for your custom Legacy Builder plan to land in?",
-        placeholder: "Best email for your plan."
-      }
-    ];
+  // ---------------------- QUESTIONS ---------------------- //
+  const surveyFlow = [
+    {
+      id: "q7_history",
+      type: "multi",
+      question:
+        "Ever played in business territory before? Tap EVERYTHING you've tried — or select brand new.",
+      help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
+      options: [
+        "Affiliate / referral marketing",
+        "Coaching / consulting",
+        "Network marketing / direct selling",
+        "Content creator / influencer path",
+        "E-commerce / selling products online",
+        "Freelance / service-based work",
+        "Forex / crypto / trading style plays",
+        "Never tried anything — I'm brand new",
+        "Other (tell me below)"
+      ],
+      otherValue: "Other (tell me below)"
+    },
+    {
+      id: "q8_goal_style",
+      type: "single",
+      question: "When you go after a big goal, which style feels MOST like you?",
+      options: [
+        "I want a clear step-by-step game plan.",
+        "I move fast and like quick wins to stay fired up.",
+        "I like deeper strategy and long-term plays.",
+        "I do best when someone checks in and keeps me accountable."
+      ]
+    },
+    {
+      id: "q8a_style_notes",
+      type: "text",
+      question:
+        "Anything you want me to know about your style when you're chasing a goal? (Optional, but it helps me coach you cleaner.)",
+      placeholder:
+        "Example: \"I overthink.\" \"I need reminders.\" \"Once I commit, I'm locked in.\""
+    },
+    {
+      id: "q9_obstacles",
+      type: "multi",
+      question:
+        "When you've chased big dreams before — what usually tripped you up?",
+      help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
+      options: [
+        "No clear system",
+        "No real mentor",
+        "Overthinking / second-guessing",
+        "Life chaos / inconsistent schedule",
+        "Confidence dips",
+        "Energy / health not dialed in",
+        "Tried alone too long",
+        "Fear of being seen / judged",
+        "I've never seriously chased a big goal yet",
+        "Other (tell me below)"
+      ],
+      otherValue: "Other (tell me below)"
+    },
+    {
+      id: "q10_personal_wins",
+      type: "multi",
+      question:
+        "Outside of money, what personal wins matter most to you in the next 6–12 months?",
+      help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
+      options: [
+        "More confidence",
+        "More energy daily",
+        "Time freedom",
+        "Stronger leadership / self-discipline",
+        "Being a better example for family",
+        "Calm + clarity (less mental noise)",
+        "Community / belonging",
+        "A routine I can actually sustain",
+        "Other (tell me below)"
+      ],
+      otherValue: "Other (tell me below)"
+    },
+    {
+      id: "q11_ideal_coach",
+      type: "single",
+      question:
+        "Picture your ideal coach. What do you want MOST from them?",
+      options: [
+        "A clear step-by-step plan",
+        "Accountability + check-ins",
+        "Straight talk / high standards",
+        "Strategy + long-term vision",
+        "Community + team rhythm",
+        "Other (tell me below)"
+      ],
+      otherValue: "Other (tell me below)"
+    },
+    {
+      id: "q12_online_presence",
+      type: "text",
+      question:
+        "Where do you show up online right now — and how big is your audience there?",
+      placeholder:
+        "Example: TikTok ~300, Instagram ~1,200, Facebook personal page only, etc."
+    },
+    {
+      id: "q14_best_email",
+      type: "email",
+      question:
+        "And what's the best email for your custom Legacy Builder plan to land in?",
+      placeholder: "Best email for your plan."
+    }
+  ];
 
-    let step = 0;
-    let answers = {};
-    let multiSelections = new Set();
-    let otherText = ""; // inline other text for current step
+  let step = 0;
+  let answers = {};
+  let multiSelections = new Set();
+  let otherText = "";
 
-    function showBotMessage(msg) {
-      chat.innerHTML += `<div class="message bot">${msg}</div>`;
-      chat.scrollTop = chat.scrollHeight;
+  function showBotMessage(msg) {
+    chat.innerHTML += `<div class="message bot">${msg}</div>`;
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function showUserMessage(msg) {
+    chat.innerHTML += `<div class="message user">${msg}</div>`;
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function showLoading() {
+    if (document.getElementById("loading")) return;
+    chat.innerHTML += `<div class="message loading" id="loading">ANGUS is thinking</div>`;
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function hideLoading() {
+    const loading = document.getElementById('loading');
+    if (loading) loading.remove();
+  }
+
+  function clearInputs() {
+    document.querySelectorAll('.input-wrap, .options, .inline-other').forEach(el => el.remove());
+  }
+
+  function askNext() {
+    if (step >= surveyFlow.length) {
+      finishSurvey();
+      return;
     }
 
-    function showUserMessage(msg) {
-      chat.innerHTML += `<div class="message user">${msg}</div>`;
-      chat.scrollTop = chat.scrollHeight;
-    }
+    clearInputs();
+    multiSelections.clear();
+    otherText = "";
 
-    function showLoading() {
-      if (document.getElementById("loading")) return;
-      chat.innerHTML += `<div class="message loading" id="loading">ANGUS is thinking</div>`;
-      chat.scrollTop = chat.scrollHeight;
-    }
+    const q = surveyFlow[step];
+    showLoading();
 
-    function hideLoading() {
-      const loading = document.getElementById('loading');
-      if (loading) loading.remove();
-    }
+    setTimeout(() => {
+      hideLoading();
+      const label = `Step ${step + 1} of ${surveyFlow.length}`;
+      showBotMessage(`<strong>${label}</strong>\n\n${q.question}`);
+      if (q.help) showBotMessage(`<div class="help">${q.help}</div>`);
+      renderInput(q);
+    }, 650);
+  }
 
-    function clearInputs() {
-      document.querySelectorAll('.input-wrap, .options, .inline-other').forEach(el => el.remove());
-    }
+  function renderInput(q) {
+    if (q.type === "single" || q.type === "multi") {
+      let html = "<div class='options' id='optionsBox'>";
 
-    function askNext() {
-      if (step >= surveyFlow.length) {
-        finishSurvey();
-        return;
-      }
-
-      clearInputs();
-      multiSelections.clear();
-      otherText = "";
-
-      const q = surveyFlow[step];
-      showLoading();
-
-      setTimeout(() => {
-        hideLoading();
-        const label = `Step ${step + 1} of ${surveyFlow.length}`;
-        showBotMessage(`<strong>${label}</strong>\n\n${q.question}`);
-        if (q.help) showBotMessage(`<div class="help">${q.help}</div>`);
-        renderInput(q);
-      }, 650);
-    }
-
-    function renderInput(q) {
-      if (q.type === "single" || q.type === "multi") {
-        let optionsHTML = "<div class='options' id='optionsBox'>";
-        q.options.forEach(opt => {
-          const safe = opt.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-          if (q.type === "single") {
-            optionsHTML += `<button onclick="selectSingle('${safe}')">${opt}</button>`;
-          } else {
-            optionsHTML += `<button onclick="toggleMulti('${safe}', this)">${opt}</button>`;
-          }
-        });
-        optionsHTML += "</div>";
-
-        // Multi-select needs Next button
-        if (q.type === "multi") {
-          optionsHTML += `
-            <div class="input-wrap">
-              <button class="next-btn" onclick="confirmMulti()">Next</button>
-            </div>
-          `;
-        }
-
-        chat.innerHTML += optionsHTML;
-      } else {
-        const placeholder = q.placeholder || "Type your answer and press Enter.";
-        const inputType = q.type === "email" ? "email" : "text";
-        const isLong = q.id === "q12_online_presence" || q.id === "q8a_style_notes";
-
-        chat.innerHTML += `
-          <div class="input-wrap">
-            ${isLong
-              ? `<textarea id="textInput" placeholder="${placeholder.replace(/"/g, '&quot;')}"
-                   onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();submitTextAnswer();}"></textarea>`
-              : `<input id="textInput" type="${inputType}" placeholder="${placeholder.replace(/"/g, '&quot;')}"
-                   onkeydown="if(event.key==='Enter'){submitTextAnswer();}">`
-            }
-            <button class="next-btn" onclick="submitTextAnswer()">Next</button>
-          </div>
-        `;
-        const input = document.getElementById("textInput");
-        if (input) input.focus();
-      }
-
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    // ---------- INLINE OTHER (multi) ----------
-    function showInlineOtherBox(q) {
-      if (document.getElementById("inlineOtherBox")) return;
-
-      const div = document.createElement("div");
-      div.className = "inline-other";
-      div.id = "inlineOtherBox";
-      div.innerHTML = `
-        <label>Tell me what you mean by “Other”:</label>
-        <textarea id="otherInput" placeholder="Type your 'Other' answer here..."></textarea>
-      `;
-
-      const optionsBox = document.getElementById("optionsBox");
-      optionsBox.insertAdjacentElement("afterend", div);
-
-      const input = document.getElementById("otherInput");
-      input.value = otherText || "";
-      input.addEventListener("input", e => {
-        otherText = e.target.value;
+      q.options.forEach(opt => {
+        const safe = opt.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        html += `<button onclick="toggleOption('${safe}', this)">${opt}</button>`;
       });
-      input.focus();
+
+      html += "</div>";
+
+      if (q.type === "multi") {
+        html += `
+          <div class="input-wrap">
+            <button class="next-btn" onclick="confirmMulti()">Next</button>
+          </div>`;
+      }
+
+      chat.innerHTML += html;
+    } else {
+      const placeholder = q.placeholder || "Type your answer and press Enter.";
+      const long = q.id === "q12_online_presence" || q.id === "q8a_style_notes";
+
+      chat.innerHTML += `
+        <div class="input-wrap">
+          ${long
+            ? `<textarea id="textInput" placeholder="${placeholder.replace(/"/g, '&quot;')}"
+                onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();submitTextAnswer();}"></textarea>`
+            : `<input id="textInput" type="${q.type}" placeholder="${placeholder.replace(/"/g, '&quot;')}"
+                onkeydown="if(event.key==='Enter'){submitTextAnswer();}">`
+          }
+          <button class="next-btn" onclick="submitTextAnswer()">Next</button>
+        </div>
+      `;
+      document.getElementById("textInput").focus();
     }
+  }
 
-    function hideInlineOtherBox() {
-      const box = document.getElementById("inlineOtherBox");
-      if (box) box.remove();
-      otherText = "";
-    }
+  // -------------------- SINGLE + MULTI OPTION TOGGLER --------------------
+  function toggleOption(option, btn) {
+    const q = surveyFlow[step];
 
-    // ---------- SINGLE SELECT ----------
-    function selectSingle(option) {
-      const q = surveyFlow[step];
-
-      // If "Other" on single-select: instantly swap to inline textbox + Next
+    // SINGLE SELECT LOGIC
+    if (q.type === "single") {
       if (q.otherValue && option === q.otherValue) {
         clearInputs();
         showUserMessage(option);
 
-        showBotMessage("Quickly tell me what you mean by “Other.”");
         chat.innerHTML += `
-          <div class="inline-other" id="inlineOtherSingle">
-            <textarea id="singleOtherInput" placeholder="Type your 'Other' answer here..."></textarea>
+          <div class="inline-other">
+            <label>Tell me what you mean by “Other”:</label>
+            <textarea id="singleOtherInput"></textarea>
           </div>
           <div class="input-wrap">
             <button class="next-btn" onclick="submitSingleOther()">Next</button>
@@ -446,137 +411,156 @@
       clearInputs();
       showUserMessage(option);
       answers[q.id] = option;
-
       step++;
       setTimeout(askNext, 300);
+      return;
     }
 
-    function submitSingleOther() {
-      const input = document.getElementById("singleOtherInput");
-      const val = (input?.value || "").trim();
+    // MULTI SELECT
+    if (multiSelections.has(option)) {
+      multiSelections.delete(option);
+      btn.classList.remove("selected");
+
+      if (q.otherValue && option === q.otherValue) {
+        hideInlineOtherBox();
+      }
+
+    } else {
+      multiSelections.add(option);
+      btn.classList.add("selected");
+
+      if (q.otherValue && option === q.otherValue) {
+        showInlineOtherBox();
+      }
+    }
+  }
+
+  function showInlineOtherBox() {
+    if (document.getElementById("inlineOtherBox")) return;
+
+    const div = document.createElement("div");
+    div.className = "inline-other";
+    div.id = "inlineOtherBox";
+    div.innerHTML = `
+      <label>Tell me what you mean by “Other”:</label>
+      <textarea id="otherInput"></textarea>
+    `;
+
+    const optionsBox = document.getElementById("optionsBox");
+    optionsBox.insertAdjacentElement("afterend", div);
+
+    const box = document.getElementById("otherInput");
+    box.addEventListener("input", e => otherText = e.target.value);
+    box.focus();
+  }
+
+  function hideInlineOtherBox() {
+    const box = document.getElementById("inlineOtherBox");
+    if (box) box.remove();
+    otherText = "";
+  }
+
+  // -------------------- SINGLE OTHER SUBMIT --------------------
+  function submitSingleOther() {
+    const val = (document.getElementById("singleOtherInput").value || "").trim();
+    if (!val) {
+      showBotMessage("Give me one clean line so I capture this right.");
+      return;
+    }
+
+    showUserMessage(val);
+    const q = surveyFlow[step];
+    answers[q.id] = `Other: ${val}`;
+
+    clearInputs();
+    step++;
+    setTimeout(askNext, 300);
+  }
+
+  // -------------------- FIXED MULTI CONFIRM --------------------
+  function confirmMulti() {
+    const q = surveyFlow[step];
+
+    if (multiSelections.size === 0) {
+      showBotMessage("Pick at least one so I can coach you clean.");
+      return;
+    }
+
+    const picked = Array.from(multiSelections);
+
+    // NEW FIX — Read Other text directly from the textbox
+    if (q.otherValue && multiSelections.has(q.otherValue)) {
+      const box = document.getElementById("otherInput");
+      const val = box ? box.value.trim() : "";
 
       if (!val) {
-        showBotMessage("Give me one clean line so I capture this right.");
+        showBotMessage("You tapped “Other.” Drop one clean line so I capture it right.");
         return;
       }
 
-      showUserMessage(val);
-
-      const q = surveyFlow[step];
-      answers[q.id] = `Other: ${val}`;
-
-      clearInputs();
-      step++;
-      setTimeout(askNext, 300);
+      picked.push(`Other: ${val}`);
     }
 
-    // ---------- MULTI SELECT ----------
-    function toggleMulti(option, btn) {
-      const q = surveyFlow[step];
+    answers[q.id] = picked;
 
-      if (multiSelections.has(option)) {
-        multiSelections.delete(option);
-        btn.classList.remove("selected");
+    clearInputs();
+    showUserMessage(picked.join(", "));
+    step++;
+    setTimeout(askNext, 300);
+  }
 
-        if (q.otherValue && option === q.otherValue) {
-          hideInlineOtherBox();
-        }
-      } else {
-        multiSelections.add(option);
-        btn.classList.add("selected");
+  // -------------------- TEXT QUESTIONS --------------------
+  function submitTextAnswer() {
+    const input = document.getElementById("textInput");
+    if (!input) return;
 
-        if (q.otherValue && option === q.otherValue) {
-          showInlineOtherBox(q);
-        }
-      }
-    }
+    const val = input.value.trim();
+    const q = surveyFlow[step];
 
-    function confirmMulti() {
-      const q = surveyFlow[step];
-
-      if (multiSelections.size === 0) {
-        showBotMessage("Pick at least one so I can coach you clean.");
+    if (!val) {
+      if (q.id === "q8a_style_notes") {
+        showUserMessage("(Skipped)");
+        answers[q.id] = "";
+        clearInputs();
+        step++;
+        setTimeout(askNext, 300);
         return;
       }
-
-      // If Other chosen, require text
-      if (q.otherValue && multiSelections.has(q.otherValue)) {
-        const val = (otherText || "").trim();
-        if (!val) {
-          showBotMessage("You tapped “Other.” Drop one clean line in the box so I capture it right.");
-          return;
-        }
-      }
-
-      const picked = Array.from(multiSelections);
-
-      // attach Other text if present
-      if (q.otherValue && multiSelections.has(q.otherValue)) {
-        picked.push(`Other: ${otherText.trim()}`);
-      }
-
-      answers[q.id] = picked;
-
-      clearInputs();
-      showUserMessage(picked.join(", "));
-
-      step++;
-      setTimeout(askNext, 300);
+      showBotMessage("Give me one clean line so I can dial this in.");
+      return;
     }
 
-    // ---------- TEXT QUESTIONS ----------
-    function submitTextAnswer() {
-      const input = document.getElementById("textInput");
-      if (!input) return;
+    showUserMessage(val);
+    answers[q.id] = val;
+    clearInputs();
+    step++;
+    setTimeout(askNext, 300);
+  }
 
-      const q = surveyFlow[step];
-      const value = input.value.trim();
-
-      if (!value) {
-        if (q.id === "q8a_style_notes") {
-          showUserMessage("(Skipped)");
-          answers[q.id] = "";
-          clearInputs();
-          step++;
-          setTimeout(askNext, 300);
-          return;
-        }
-        showBotMessage("Give me a quick line here so I can dial this in with you.");
-        return;
-      }
-
-      showUserMessage(value);
-      answers[q.id] = value;
-
-      clearInputs();
-      step++;
-      setTimeout(askNext, 300);
+  // -------------------- SUBMIT --------------------
+  function finishSurvey() {
+    const email = (answers["q14_best_email"] || "").trim();
+    if (!email) {
+      showBotMessage("I need your best email so your plan lands clean.");
+      return;
     }
+    submitSurvey(email);
+  }
 
-    // ---------- SUBMIT ----------
-    function finishSurvey() {
-      const email = (answers["q14_best_email"] || "").trim();
-      if (!email) {
-        showBotMessage("I'll need your best email so we know where to send your Legacy Builder plan.");
-        return;
-      }
-      submitSurvey(email);
-    }
+  function submitSurvey(email) {
+    showLoading();
 
-    function submitSurvey(email) {
-      showLoading();
+    const payload = {
+      email,
+      answers,
+      survey_type: "deepdive"
+    };
 
-      const payload = {
-        email,
-        answers,
-        survey_type: "deepdive"
-      };
-
-      fetch(BACKEND_URL, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-      })
+    fetch(BACKEND_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    })
       .then(res => res.json())
       .then(data => {
         hideLoading();
@@ -586,35 +570,28 @@
             window.top.location.href = data.redirect_url;
           }, 1200);
         } else {
-          showBotMessage("Something glitched on the handoff. Refresh and try again.");
+          showBotMessage("Something glitched. Refresh and try again.");
         }
       })
       .catch(err => {
         console.error("Deep Dive submit error:", err);
         hideLoading();
-        showBotMessage("There was an issue sending your answers. Refresh and try once more.");
+        showBotMessage("There was an issue sending your answers. Try again.");
       });
-    }
+  }
 
-    // ---------- INTRO ----------
-    window.onload = () => {
+  // -------------------- INTRO --------------------
+  window.onload = () => {
+    showBotMessage(
+      "Alright, legend — that first round gave me your big picture. Now let's lock in the details for your Legacy Builder plan."
+    );
+    setTimeout(() => {
       showBotMessage(
-        "Alright, legend — that first round gave me your big picture. Now let's lock in the details for your Legacy Builder plan."
+        "Tap fast. If you hit “Other,” the box opens instantly — keep selecting as needed. Then hit Next."
       );
-      setTimeout(() => {
-        showBotMessage(
-          "Tap your answers fast. If you hit “Other,” a box opens instantly — keep selecting if you want."
-        );
-        setTimeout(askNext, 900);
-      }, 900);
-    };
-
-    // expose for inline handlers
-    window.selectSingle = selectSingle;
-    window.toggleMulti = toggleMulti;
-    window.confirmMulti = confirmMulti;
-    window.submitTextAnswer = submitTextAnswer;
-    window.submitSingleOther = submitSingleOther;
-  </script>
+      setTimeout(askNext, 900);
+    }, 900);
+  };
+</script>
 </body>
 </html>

@@ -54,6 +54,7 @@
       transition: all 0.22s ease;
       text-align: left;
       letter-spacing: 0.2px;
+      position: relative;
     }
 
     .options button:hover {
@@ -63,13 +64,29 @@
       box-shadow: 0 0 18px rgba(212,167,44,0.45);
     }
 
+    /* Selected state for multi-select */
+    .options button.selected {
+      background: rgba(212,167,44,0.15);
+      border-color: #D4A72C;
+      box-shadow: inset 0 0 0 1px #D4A72C;
+    }
+    .options button.selected::after {
+      content: "✓";
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #D4A72C;
+      font-weight: 800;
+    }
+
     .input-wrap {
       display: flex;
       gap: 10px;
       margin-top: 16px;
     }
 
-    .input-wrap input {
+    .input-wrap input, .input-wrap textarea {
       flex: 1;
       padding: 12px;
       border-radius: 10px;
@@ -78,9 +95,15 @@
       color: #f5f5f5;
       font-size: 15px;
       box-sizing: border-box;
+      font-family: 'Inter', Arial, sans-serif;
     }
 
-    .input-wrap input:focus {
+    .input-wrap textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .input-wrap input:focus, .input-wrap textarea:focus {
       outline: none;
       border-color: #D4A72C;
       box-shadow: 0 0 10px rgba(212,167,44,0.35);
@@ -92,7 +115,7 @@
       border: none;
       background: #D4A72C;
       color: #050608;
-      font-weight: 600;
+      font-weight: 700;
       font-size: 14px;
       cursor: pointer;
       white-space: nowrap;
@@ -104,11 +127,16 @@
       box-shadow: 0 0 14px rgba(212,167,44,0.55);
     }
 
+    .help {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 6px;
+    }
+
     .loading {
       color: #D4A72C;
       font-style: italic;
     }
-
     .loading::after {
       content: "...";
       animation: dots 1.5s infinite;
@@ -140,18 +168,30 @@
     const chat = document.getElementById('chat');
     const BACKEND_URL = "/submit";
 
-    // ---------------------- Deep-Dive Questions (7–14, NO PHONE) ---------------------- //
+    // ---------------------- Deep-Dive Questions (NO PHONE) ---------------------- //
     const surveyFlow = [
       {
         id: "q7_history",
-        type: "text",
+        type: "multi",
         question:
-          "Ever played in business territory before? Drop anything you've tried (affiliate, coaching, network marketing, content, etc.) — or say \"Never tried it\" if you're brand new.",
-        placeholder: "Give me the quick version of your business story so far."
+          "Ever played in business territory before? Tap EVERYTHING you've tried — or select brand new.",
+        help: "Select all that apply. Then hit Next.",
+        options: [
+          "Affiliate / referral marketing",
+          "Coaching / consulting",
+          "Network marketing / direct selling",
+          "Content creator / influencer path",
+          "E-commerce / selling products online",
+          "Freelance / service-based work",
+          "Forex / crypto / trading style plays",
+          "Never tried anything — I'm brand new",
+          "Other (tell me below)"
+        ],
+        otherValue: "Other (tell me below)"
       },
       {
         id: "q8_goal_style",
-        type: "options",
+        type: "single",
         question: "When you go after a big goal, which style feels MOST like you?",
         options: [
           "I want a clear step-by-step game plan.",
@@ -170,26 +210,57 @@
       },
       {
         id: "q9_obstacles",
-        type: "text",
+        type: "multi",
         question:
-          "When you've chased big dreams before — in business or wellness — what usually tripped you up? Time, fear, energy, guidance, something else?",
-        placeholder: "Be real here so we don't repeat the same pattern."
+          "When you've chased big dreams before — what usually tripped you up?",
+        help: "Select all that apply. Then hit Next.",
+        options: [
+          "No clear system",
+          "No real mentor",
+          "Overthinking / second-guessing",
+          "Life chaos / inconsistent schedule",
+          "Confidence dips",
+          "Energy / health not dialed in",
+          "Tried alone too long",
+          "Fear of being seen / judged",
+          "I've never seriously chased a big goal yet",
+          "Other (tell me below)"
+        ],
+        otherValue: "Other (tell me below)"
       },
       {
         id: "q10_personal_wins",
-        type: "text",
+        type: "multi",
         question:
           "Outside of money, what personal wins matter most to you in the next 6–12 months?",
-        placeholder:
-          "For example: confidence, energy, time freedom, being a stronger example, etc."
+        help: "Select all that apply. Then hit Next.",
+        options: [
+          "More confidence",
+          "More energy daily",
+          "Time freedom",
+          "Stronger leadership / self-discipline",
+          "Being a better example for family",
+          "Calm + clarity (less mental noise)",
+          "Community / belonging",
+          "A routine I can actually sustain",
+          "Other (tell me below)"
+        ],
+        otherValue: "Other (tell me below)"
       },
       {
         id: "q11_ideal_coach",
-        type: "text",
+        type: "single",
         question:
           "Picture your ideal coach. What do you want MOST from them?",
-        placeholder:
-          "Give me your wishlist: plan, accountability, real talk, community, etc."
+        options: [
+          "A clear step-by-step plan",
+          "Accountability + check-ins",
+          "Straight talk / high standards",
+          "Strategy + long-term vision",
+          "Community + team rhythm",
+          "Other (tell me below)"
+        ],
+        otherValue: "Other (tell me below)"
       },
       {
         id: "q12_online_presence",
@@ -210,6 +281,7 @@
 
     let step = 0;
     let answers = {};
+    let multiSelections = new Set();
 
     function showBotMessage(msg) {
       chat.innerHTML += `<div class="message bot">${msg}</div>`;
@@ -232,11 +304,18 @@
       if (loading) loading.remove();
     }
 
+    function clearInputs() {
+      document.querySelectorAll('.input-wrap, .options').forEach(el => el.remove());
+    }
+
     function askNext() {
       if (step >= surveyFlow.length) {
         finishSurvey();
         return;
       }
+
+      clearInputs();
+      multiSelections.clear();
 
       const q = surveyFlow[step];
       showLoading();
@@ -245,32 +324,46 @@
         hideLoading();
         const label = `Step ${step + 1} of ${surveyFlow.length}`;
         showBotMessage(`<strong>${label}</strong>\n\n${q.question}`);
+        if (q.help) showBotMessage(`<div class="help">${q.help}</div>`);
         renderInput(q);
-      }, 700);
+      }, 650);
     }
 
     function renderInput(q) {
-      // clear any stray input-wrap/options before rendering
-      document.querySelectorAll('.input-wrap, .options').forEach(el => el.remove());
-
-      if (q.type === "options") {
+      if (q.type === "single" || q.type === "multi") {
         let optionsHTML = "<div class='options'>";
         q.options.forEach(opt => {
           const safe = opt.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-          optionsHTML += `<button onclick="selectOption('${safe}')">${opt}</button>`;
+          if (q.type === "single") {
+            optionsHTML += `<button onclick="selectSingle('${safe}')">${opt}</button>`;
+          } else {
+            optionsHTML += `<button onclick="toggleMulti('${safe}', this)">${opt}</button>`;
+          }
         });
+
         optionsHTML += "</div>";
+
+        // Multi-select needs a Next button
+        if (q.type === "multi") {
+          optionsHTML += `
+            <div class="input-wrap">
+              <button class="next-btn" onclick="confirmMulti()">Next</button>
+            </div>
+          `;
+        }
+
         chat.innerHTML += optionsHTML;
       } else {
         const placeholder = q.placeholder || "Type your answer and press Enter.";
         const inputType = q.type === "email" ? "email" : "text";
+        const isLong = q.id === "q12_online_presence" || q.id === "q8a_style_notes";
 
         chat.innerHTML += `
           <div class="input-wrap">
-            <input id="textInput"
-                   type="${inputType}"
-                   placeholder="${placeholder.replace(/"/g, '&quot;')}"
-                   onkeydown="if(event.key==='Enter'){submitTextAnswer();}">
+            ${isLong
+              ? `<textarea id="textInput" placeholder="${placeholder.replace(/"/g, '&quot;')}" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();submitTextAnswer();}"></textarea>`
+              : `<input id="textInput" type="${inputType}" placeholder="${placeholder.replace(/"/g, '&quot;')}" onkeydown="if(event.key==='Enter'){submitTextAnswer();}">`
+            }
             <button class="next-btn" onclick="submitTextAnswer()">Next</button>
           </div>
         `;
@@ -281,17 +374,105 @@
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function selectOption(option) {
-      document.querySelectorAll('.options').forEach(div => div.remove());
+    // ---------- SINGLE SELECT ----------
+    function selectSingle(option) {
+      clearInputs();
       showUserMessage(option);
 
       const q = surveyFlow[step];
-      answers[q.id] = option;
 
+      // If "Other" on single-select, ask for text before moving on
+      if (q.otherValue && option === q.otherValue) {
+        answers[q.id] = option;
+        askOtherText(q);
+        return;
+      }
+
+      answers[q.id] = option;
       step++;
-      setTimeout(askNext, 350);
+      setTimeout(askNext, 300);
     }
 
+    // ---------- MULTI SELECT ----------
+    function toggleMulti(option, btn) {
+      if (multiSelections.has(option)) {
+        multiSelections.delete(option);
+        btn.classList.remove("selected");
+      } else {
+        multiSelections.add(option);
+        btn.classList.add("selected");
+      }
+    }
+
+    function confirmMulti() {
+      const q = surveyFlow[step];
+
+      if (multiSelections.size === 0) {
+        showBotMessage("Pick at least one so I can coach you clean.");
+        return;
+      }
+
+      const picked = Array.from(multiSelections);
+
+      // if "Other" picked, store picks and ask for text
+      if (q.otherValue && multiSelections.has(q.otherValue)) {
+        answers[q.id] = picked;
+        clearInputs();
+        showUserMessage(picked.join(", "));
+        askOtherText(q);
+        return;
+      }
+
+      answers[q.id] = picked;
+      clearInputs();
+      showUserMessage(picked.join(", "));
+      step++;
+      setTimeout(askNext, 300);
+    }
+
+    // ---------- OTHER TEXT ----------
+    function askOtherText(q) {
+      showBotMessage("Quickly tell me what you mean by “Other.”");
+
+      chat.innerHTML += `
+        <div class="input-wrap">
+          <textarea id="otherInput" placeholder="Type your 'Other' answer here..."></textarea>
+          <button class="next-btn" onclick="submitOtherText()">Next</button>
+        </div>
+      `;
+      document.getElementById("otherInput").focus();
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function submitOtherText() {
+      const input = document.getElementById("otherInput");
+      if (!input) return;
+      const val = input.value.trim();
+
+      if (!val) {
+        showBotMessage("Give me one clean line so I capture this right.");
+        return;
+      }
+
+      showUserMessage(val);
+
+      const q = surveyFlow[step];
+
+      // Append other text to existing answer
+      if (Array.isArray(answers[q.id])) {
+        answers[q.id].push(`Other: ${val}`);
+      } else if (typeof answers[q.id] === "string" && answers[q.id] === q.otherValue) {
+        answers[q.id] = `Other: ${val}`;
+      } else {
+        answers[q.id] = val;
+      }
+
+      clearInputs();
+      step++;
+      setTimeout(askNext, 300);
+    }
+
+    // ---------- TEXT QUESTIONS ----------
     function submitTextAnswer() {
       const input = document.getElementById("textInput");
       if (!input) return;
@@ -303,9 +484,9 @@
         if (q.id === "q8a_style_notes") {
           showUserMessage("(Skipped)");
           answers[q.id] = "";
-          input.parentElement.remove();
+          clearInputs();
           step++;
-          setTimeout(askNext, 350);
+          setTimeout(askNext, 300);
           return;
         }
         showBotMessage("Give me a quick line here so I can dial this in with you.");
@@ -315,11 +496,12 @@
       showUserMessage(value);
       answers[q.id] = value;
 
-      input.parentElement.remove();
+      clearInputs();
       step++;
-      setTimeout(askNext, 350);
+      setTimeout(askNext, 300);
     }
 
+    // ---------- SUBMIT ----------
     function finishSurvey() {
       const email = (answers["q14_best_email"] || "").trim();
       if (!email) {
@@ -362,20 +544,25 @@
       });
     }
 
+    // ---------- INTRO ----------
     window.onload = () => {
       showBotMessage(
         "Alright, legend — that first round gave me your big picture. Now let's lock in the details for your Legacy Builder plan."
       );
       setTimeout(() => {
         showBotMessage(
-          "These next questions are quick, but they help me tailor this with you — not at you."
+          "Tap your answers fast. If you hit “Other,” I’ll grab one clean line from you."
         );
         setTimeout(askNext, 900);
       }, 900);
     };
 
-    window.selectOption = selectOption;
+    // expose for inline handlers
+    window.selectSingle = selectSingle;
+    window.toggleMulti = toggleMulti;
+    window.confirmMulti = confirmMulti;
     window.submitTextAnswer = submitTextAnswer;
+    window.submitOtherText = submitOtherText;
   </script>
 </body>
 </html>

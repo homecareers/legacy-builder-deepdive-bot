@@ -133,6 +133,21 @@
       margin-top: 6px;
     }
 
+    .inline-other {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px dashed #444;
+      border-radius: 10px;
+      background: #0c0c0c;
+    }
+
+    .inline-other label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: #ccc;
+    }
+
     .loading {
       color: #D4A72C;
       font-style: italic;
@@ -175,7 +190,7 @@
         type: "multi",
         question:
           "Ever played in business territory before? Tap EVERYTHING you've tried — or select brand new.",
-        help: "Select all that apply. Then hit Next.",
+        help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
         options: [
           "Affiliate / referral marketing",
           "Coaching / consulting",
@@ -213,7 +228,7 @@
         type: "multi",
         question:
           "When you've chased big dreams before — what usually tripped you up?",
-        help: "Select all that apply. Then hit Next.",
+        help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
         options: [
           "No clear system",
           "No real mentor",
@@ -233,7 +248,7 @@
         type: "multi",
         question:
           "Outside of money, what personal wins matter most to you in the next 6–12 months?",
-        help: "Select all that apply. Then hit Next.",
+        help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
         options: [
           "More confidence",
           "More energy daily",
@@ -282,6 +297,7 @@
     let step = 0;
     let answers = {};
     let multiSelections = new Set();
+    let otherText = ""; // inline other text for current step
 
     function showBotMessage(msg) {
       chat.innerHTML += `<div class="message bot">${msg}</div>`;
@@ -305,7 +321,7 @@
     }
 
     function clearInputs() {
-      document.querySelectorAll('.input-wrap, .options').forEach(el => el.remove());
+      document.querySelectorAll('.input-wrap, .options, .inline-other').forEach(el => el.remove());
     }
 
     function askNext() {
@@ -316,6 +332,7 @@
 
       clearInputs();
       multiSelections.clear();
+      otherText = "";
 
       const q = surveyFlow[step];
       showLoading();
@@ -331,7 +348,7 @@
 
     function renderInput(q) {
       if (q.type === "single" || q.type === "multi") {
-        let optionsHTML = "<div class='options'>";
+        let optionsHTML = "<div class='options' id='optionsBox'>";
         q.options.forEach(opt => {
           const safe = opt.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
           if (q.type === "single") {
@@ -340,10 +357,9 @@
             optionsHTML += `<button onclick="toggleMulti('${safe}', this)">${opt}</button>`;
           }
         });
-
         optionsHTML += "</div>";
 
-        // Multi-select needs a Next button
+        // Multi-select needs Next button
         if (q.type === "multi") {
           optionsHTML += `
             <div class="input-wrap">
@@ -361,8 +377,10 @@
         chat.innerHTML += `
           <div class="input-wrap">
             ${isLong
-              ? `<textarea id="textInput" placeholder="${placeholder.replace(/"/g, '&quot;')}" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();submitTextAnswer();}"></textarea>`
-              : `<input id="textInput" type="${inputType}" placeholder="${placeholder.replace(/"/g, '&quot;')}" onkeydown="if(event.key==='Enter'){submitTextAnswer();}">`
+              ? `<textarea id="textInput" placeholder="${placeholder.replace(/"/g, '&quot;')}"
+                   onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();submitTextAnswer();}"></textarea>`
+              : `<input id="textInput" type="${inputType}" placeholder="${placeholder.replace(/"/g, '&quot;')}"
+                   onkeydown="if(event.key==='Enter'){submitTextAnswer();}">`
             }
             <button class="next-btn" onclick="submitTextAnswer()">Next</button>
           </div>
@@ -374,33 +392,102 @@
       chat.scrollTop = chat.scrollHeight;
     }
 
+    // ---------- INLINE OTHER (multi) ----------
+    function showInlineOtherBox(q) {
+      if (document.getElementById("inlineOtherBox")) return;
+
+      const div = document.createElement("div");
+      div.className = "inline-other";
+      div.id = "inlineOtherBox";
+      div.innerHTML = `
+        <label>Tell me what you mean by “Other”:</label>
+        <textarea id="otherInput" placeholder="Type your 'Other' answer here..."></textarea>
+      `;
+
+      const optionsBox = document.getElementById("optionsBox");
+      optionsBox.insertAdjacentElement("afterend", div);
+
+      const input = document.getElementById("otherInput");
+      input.value = otherText || "";
+      input.addEventListener("input", e => {
+        otherText = e.target.value;
+      });
+      input.focus();
+    }
+
+    function hideInlineOtherBox() {
+      const box = document.getElementById("inlineOtherBox");
+      if (box) box.remove();
+      otherText = "";
+    }
+
     // ---------- SINGLE SELECT ----------
     function selectSingle(option) {
-      clearInputs();
-      showUserMessage(option);
-
       const q = surveyFlow[step];
 
-      // If "Other" on single-select, ask for text before moving on
+      // If "Other" on single-select: instantly swap to inline textbox + Next
       if (q.otherValue && option === q.otherValue) {
-        answers[q.id] = option;
-        askOtherText(q);
+        clearInputs();
+        showUserMessage(option);
+
+        showBotMessage("Quickly tell me what you mean by “Other.”");
+        chat.innerHTML += `
+          <div class="inline-other" id="inlineOtherSingle">
+            <textarea id="singleOtherInput" placeholder="Type your 'Other' answer here..."></textarea>
+          </div>
+          <div class="input-wrap">
+            <button class="next-btn" onclick="submitSingleOther()">Next</button>
+          </div>
+        `;
+        document.getElementById("singleOtherInput").focus();
         return;
       }
 
+      clearInputs();
+      showUserMessage(option);
       answers[q.id] = option;
+
+      step++;
+      setTimeout(askNext, 300);
+    }
+
+    function submitSingleOther() {
+      const input = document.getElementById("singleOtherInput");
+      const val = (input?.value || "").trim();
+
+      if (!val) {
+        showBotMessage("Give me one clean line so I capture this right.");
+        return;
+      }
+
+      showUserMessage(val);
+
+      const q = surveyFlow[step];
+      answers[q.id] = `Other: ${val}`;
+
+      clearInputs();
       step++;
       setTimeout(askNext, 300);
     }
 
     // ---------- MULTI SELECT ----------
     function toggleMulti(option, btn) {
+      const q = surveyFlow[step];
+
       if (multiSelections.has(option)) {
         multiSelections.delete(option);
         btn.classList.remove("selected");
+
+        if (q.otherValue && option === q.otherValue) {
+          hideInlineOtherBox();
+        }
       } else {
         multiSelections.add(option);
         btn.classList.add("selected");
+
+        if (q.otherValue && option === q.otherValue) {
+          showInlineOtherBox(q);
+        }
       }
     }
 
@@ -412,62 +499,27 @@
         return;
       }
 
+      // If Other chosen, require text
+      if (q.otherValue && multiSelections.has(q.otherValue)) {
+        const val = (otherText || "").trim();
+        if (!val) {
+          showBotMessage("You tapped “Other.” Drop one clean line in the box so I capture it right.");
+          return;
+        }
+      }
+
       const picked = Array.from(multiSelections);
 
-      // if "Other" picked, store picks and ask for text
+      // attach Other text if present
       if (q.otherValue && multiSelections.has(q.otherValue)) {
-        answers[q.id] = picked;
-        clearInputs();
-        showUserMessage(picked.join(", "));
-        askOtherText(q);
-        return;
+        picked.push(`Other: ${otherText.trim()}`);
       }
 
       answers[q.id] = picked;
+
       clearInputs();
       showUserMessage(picked.join(", "));
-      step++;
-      setTimeout(askNext, 300);
-    }
 
-    // ---------- OTHER TEXT ----------
-    function askOtherText(q) {
-      showBotMessage("Quickly tell me what you mean by “Other.”");
-
-      chat.innerHTML += `
-        <div class="input-wrap">
-          <textarea id="otherInput" placeholder="Type your 'Other' answer here..."></textarea>
-          <button class="next-btn" onclick="submitOtherText()">Next</button>
-        </div>
-      `;
-      document.getElementById("otherInput").focus();
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    function submitOtherText() {
-      const input = document.getElementById("otherInput");
-      if (!input) return;
-      const val = input.value.trim();
-
-      if (!val) {
-        showBotMessage("Give me one clean line so I capture this right.");
-        return;
-      }
-
-      showUserMessage(val);
-
-      const q = surveyFlow[step];
-
-      // Append other text to existing answer
-      if (Array.isArray(answers[q.id])) {
-        answers[q.id].push(`Other: ${val}`);
-      } else if (typeof answers[q.id] === "string" && answers[q.id] === q.otherValue) {
-        answers[q.id] = `Other: ${val}`;
-      } else {
-        answers[q.id] = val;
-      }
-
-      clearInputs();
       step++;
       setTimeout(askNext, 300);
     }
@@ -551,7 +603,7 @@
       );
       setTimeout(() => {
         showBotMessage(
-          "Tap your answers fast. If you hit “Other,” I’ll grab one clean line from you."
+          "Tap your answers fast. If you hit “Other,” a box opens instantly — keep selecting if you want."
         );
         setTimeout(askNext, 900);
       }, 900);
@@ -562,7 +614,7 @@
     window.toggleMulti = toggleMulti;
     window.confirmMulti = confirmMulti;
     window.submitTextAnswer = submitTextAnswer;
-    window.submitOtherText = submitOtherText;
+    window.submitSingleOther = submitSingleOther;
   </script>
 </body>
 </html>

@@ -187,99 +187,7 @@
   // ---------------------- QUESTIONS ---------------------- //
   const surveyFlow = [
     {
-      id: "q7_history",
-      type: "multi",
-      question:
-        "Ever played in business territory before? Tap EVERYTHING you've tried — or select brand new.",
-      help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
-      options: [
-        "Affiliate / referral marketing",
-        "Coaching / consulting",
-        "Network marketing / direct selling",
-        "Content creator / influencer path",
-        "E-commerce / selling products online",
-        "Freelance / service-based work",
-        "Forex / crypto / trading style plays",
-        "Never tried anything — I'm brand new",
-        "Other (tell me below)"
-      ],
-      otherValue: "Other (tell me below)"
-    },
-    {
-      id: "q8_goal_style",
-      type: "single",
-      question: "When you go after a big goal, which style feels MOST like you?",
-      options: [
-        "I want a clear step-by-step game plan.",
-        "I move fast and like quick wins to stay fired up.",
-        "I like deeper strategy and long-term plays.",
-        "I do best when someone checks in and keeps me accountable."
-      ]
-    },
-    {
-      id: "q8a_style_notes",
-      type: "text",
-      question:
-        "Anything you want me to know about your style when you're chasing a goal? (Optional, but it helps me coach you cleaner.)",
-      placeholder:
-        "Example: \"I overthink.\" \"I need reminders.\" \"Once I commit, I'm locked in.\""
-    },
-    {
-      id: "q9_obstacles",
-      type: "multi",
-      question:
-        "When you've chased big dreams before — what usually tripped you up?",
-      help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
-      options: [
-        "No clear system",
-        "No real mentor",
-        "Overthinking / second-guessing",
-        "Life chaos / inconsistent schedule",
-        "Confidence dips",
-        "Energy / health not dialed in",
-        "Tried alone too long",
-        "Fear of being seen / judged",
-        "I've never seriously chased a big goal yet",
-        "Other (tell me below)"
-      ],
-      otherValue: "Other (tell me below)"
-    },
-    {
-      id: "q10_personal_wins",
-      type: "multi",
-      question:
-        "Outside of money, what personal wins matter most to you in the next 6–12 months?",
-      help: "Select all that apply. If you tap “Other,” a box appears instantly. Then hit Next.",
-      options: [
-        "More confidence",
-        "More energy daily",
-        "Time freedom",
-        "Stronger leadership / self-discipline",
-        "Being a better example for family",
-        "Calm + clarity (less mental noise)",
-        "Community / belonging",
-        "A routine I can actually sustain",
-        "Other (tell me below)"
-      ],
-      otherValue: "Other (tell me below)"
-    },
-    {
-      id: "q11_ideal_coach",
-      type: "single",
-      question:
-        "Picture your ideal coach. What do you want MOST from them?",
-      options: [
-        "A clear step-by-step plan",
-        "Accountability + check-ins",
-        "Straight talk / high standards",
-        "Strategy + long-term vision",
-        "Community + team rhythm",
-        "Other (tell me below)"
-      ],
-      otherValue: "Other (tell me below)"
-    },
-    {
-      id: "q12_online_presence",
+      id: "q7_social_audience",
       type: "text",
       question:
         "Where do you show up online right now — and how big is your audience there?",
@@ -287,10 +195,320 @@
         "Example: TikTok ~300, Instagram ~1,200, Facebook personal page only, etc."
     },
     {
+      id: "q8_social_presence",
+      type: "single",
+      question: "What does your current social media presence look like?",
+      options: [
+        "🧍‍♂️ I barely post — mostly invisible online",
+        "📅 I post sometimes, but not consistently",
+        "🔁 I post consistently but not business-focused yet",
+        "👀 Small audience, light engagement",
+        "🔥 Engaged community — people respond to me",
+        "🎥 I create content regularly (stories, reels, videos)",
+        "👻 I mostly consume — not a creator yet"
+      ]
+    },
+    {
+      id: "q9_content_confidence",
+      type: "single",
+      question: "How confident are you creating simple content?",
+      options: [
+        "1️⃣  1 – I freeze up. Zero confidence.",
+        "2️⃣  2",
+        "3️⃣  3",
+        "4️⃣  4",
+        "5️⃣  5 – I could try with help.",
+        "6️⃣  6",
+        "7️⃣  7",
+        "8️⃣  8 – I'm comfortable.",
+        "9️⃣  9",
+        "🔟  10 – Give me the plan."
+      ]
+    },
+    {
+      id: "q10_success_definition",
+      type: "text",
+      question:
+        "If we were sitting here 90 days from now and you told me “This WORKED,” what would have happened?",
+      placeholder:
+        "Paint the picture. What would feel like a win 90 days from now?"
+    },
+    {
+      id: "q11_primary_outcome",
+      type: "single",
+      question:
+        "What’s the #1 outcome you want from building this — income, freedom, confidence, energy, or something else?",
+      options: [
+        "💰 More income",
+        "🕊 More freedom",
+        "💪 More confidence",
+        "⚡️ More energy",
+        "📅 More structure",
+        "🎯 More purpose",
+        "🤝 More community",
+        "✍️ Something else (type in)"
+      ],
+      otherValue: "✍️ Something else (type in)"
+    },
+    {
+      id: "q12_outcome_reason",
+      type: "text",
+      question:
+        "And why does that outcome matter to you personally?",
+      placeholder:
+        "Why this outcome, and why now? Give me one honest line."
+    },
+    {
+      id: "q13_weekly_schedule",
+      type: "text",
+      question:
+        "What does your weekly schedule actually look like right now?",
+      placeholder:
+        "Example: 9–5 job, kids’ activities, evenings open, weekends busy, etc."
+    },
+    {
+      id: "q14_energy_windows",
+      type: "multi",
+      question:
+        "What times of day do you usually have the MOST focus or energy?",
+      help: "Select all that apply. If you tap “Other,” a box opens instantly. Then hit Next.",
+      options: [
+        "🌅 Early morning (5–8am)",
+        "🌞 Mid-morning (8–11am)",
+        "🍱 Afternoon (11am–3pm)",
+        "🌇 Late afternoon (3–6pm)",
+        "🌙 Evening (6–9pm)",
+        "🌌 Late night (9pm+)",
+        "🔄 It varies",
+        "⚡️ Depends on my work/kids schedule"
+      ]
+    },
+    {
+      id: "q15_commitments",
+      type: "text",
+      question:
+        "Do you have any current commitments we need to build around?",
+      placeholder:
+        "Work hours, kids, caregiving, travel, church, sports, etc."
+    },
+    {
+      id: "q16_consistency_drivers",
+      type: "multi",
+      question:
+        "When you’ve pursued goals in the past… what helped you stay consistent?",
+      help: "Select all that apply. If you tap “Other,” a box opens instantly. Then hit Next.",
+      options: [
+        "🗺 Clear steps",
+        "📊 Tracking progress",
+        "🙋‍♀️ Accountability",
+        "👥 Community support",
+        "📆 Routine + structure",
+        "🧠 Strong “why”",
+        "⏱ Deadlines",
+        "🔥 Momentum",
+        "✍️ Other (type in)"
+      ],
+      otherValue: "✍️ Other (type in)"
+    },
+    {
+      id: "q17_derailers",
+      type: "multi",
+      question:
+        "What usually pulls you off track when you’re chasing a big goal?",
+      help: "Select all that apply. If you tap “Other,” a box opens instantly. Then hit Next.",
+      options: [
+        "🧱 Lack of structure",
+        "🌀 Overthinking",
+        "🌪 Life chaos",
+        "😬 Doubting myself",
+        "🔇 Losing momentum",
+        "🎭 Trying to do it alone",
+        "⏰ Too many responsibilities",
+        "💭 Not seeing results fast enough",
+        "✍️ Other (type in)"
+      ],
+      otherValue: "✍️ Other (type in)"
+    },
+    {
+      id: "q18_stress_response",
+      type: "single",
+      question:
+        "When you get stressed or discouraged, how do you usually react?",
+      options: [
+        "📴 I shut down",
+        "🐢 I slow way down",
+        "🧗‍♂️ I push harder",
+        "🙈 I avoid tasks",
+        "🤯 I get overwhelmed",
+        "🙋‍♂️ I ask for help",
+        "🔄 It depends"
+      ]
+    },
+    {
+      id: "q19_strengths",
+      type: "multi",
+      question:
+        "Which strengths do you already bring to the table?",
+      help: "Select all that apply. If you tap “Other,” a box opens instantly. Then hit Next.",
+      options: [
+        "🗣 Talking to people",
+        "💬 Encouraging others",
+        "📱 Social posting",
+        "🎨 Creativity",
+        "🧹 Organization",
+        "🔁 Consistency",
+        "🎓 Learning quickly",
+        "📝 Following a plan",
+        "🔊 Storytelling",
+        "🌱 Leadership potential",
+        "✍️ Other"
+      ],
+      otherValue: "✍️ Other"
+    },
+    {
+      id: "q20_skill_focus",
+      type: "single",
+      question:
+        "Which skill do you want the MOST help developing?",
+      options: [
+        "🗣 Talking to people confidently",
+        "✍️ Posting content consistently",
+        "🤝 Starting conversations",
+        "🔁 Following a daily system",
+        "⏱ Time management",
+        "🔥 Building habit momentum",
+        "🎯 Staying accountable",
+        "🧩 Understanding the business flow",
+        "✨ Something else (type in)"
+      ],
+      otherValue: "✨ Something else (type in)"
+    },
+    {
+      id: "q21_system_confidence",
+      type: "single",
+      question:
+        "How confident are you in your ability to follow a simple daily system?",
+      options: [
+        "1️⃣  1 – I doubt I’ll stick with it.",
+        "2️⃣  2",
+        "3️⃣  3",
+        "4️⃣  4",
+        "5️⃣  5 – I’ll try if it’s simple.",
+        "6️⃣  6",
+        "7️⃣  7",
+        "8️⃣  8 – I’m solid with a good plan.",
+        "9️⃣  9",
+        "🔟  10 – If we build it, I’ll run it."
+      ]
+    },
+    {
+      id: "q22_income_impact",
+      type: "text",
+      question:
+        "What would earning an extra $300–$800/month change for you right now?",
+      placeholder:
+        "Example: cover a bill, debt relief, breathing room, savings, kids’ activities, etc."
+    },
+    {
+      id: "q23_biggest_fear",
+      type: "text",
+      question:
+        "What’s the biggest fear or hesitation you have about starting something new?",
+      placeholder:
+        "Be honest. This helps me coach you, not judge you."
+    },
+    {
+      id: "q24_six_months_worry",
+      type: "text",
+      question:
+        "If nothing changes in your life over the next 6 months… what worries you most?",
+      placeholder:
+        "What would bother you if everything stayed exactly the same?"
+    },
+    {
+      id: "q25_future_self",
+      type: "text",
+      question:
+        "Who do you want to become in the next 12 months?",
+      placeholder:
+        "Describe your future self — habits, energy, confidence, leadership, life."
+    },
+    {
+      id: "q26_never_feel",
+      type: "single",
+      question:
+        "What’s one thing you NEVER want to feel again?",
+      options: [
+        "😞 Feeling stuck",
+        "😰 Anxiety",
+        "😤 Overwhelm",
+        "😔 Insecurity",
+        "😩 Exhaustion",
+        "🥱 Burnout",
+        "🧍‍♂️ Feeling alone",
+        "✍️ Other (type in)"
+      ],
+      otherValue: "✍️ Other (type in)"
+    },
+    {
+      id: "q27_daily_feeling",
+      type: "single",
+      question:
+        "And what’s one feeling you WANT to experience every day?",
+      options: [
+        "💪 Confidence",
+        "✨ Clarity",
+        "🔋 Energy",
+        "🌼 Peace",
+        "🚀 Momentum",
+        "🎯 Purpose",
+        "😄 Joy",
+        "🔥 Drive"
+      ]
+    },
+    {
+      id: "q28_accountability_style",
+      type: "single",
+      question:
+        "How do you want me to hold you accountable?",
+      options: [
+        "🤝 Gentle encouragement",
+        "🔥 Direct challenge",
+        "🧭 Step-by-step guidance",
+        "🧘 Light-touch check-ins",
+        "👯 Partnership/teamwork",
+        "🎯 Hybrid approach"
+      ]
+    },
+    {
+      id: "q29_tracking_style",
+      type: "multi",
+      question:
+        "How do you prefer to track progress?",
+      help: "Select all that apply. Then hit Next.",
+      options: [
+        "☑️ Daily check marks",
+        "🏆 Weekly wins",
+        "🔋 Energy levels",
+        "💛 Confidence levels",
+        "💵 Income movement",
+        "🧬 Habit improvements",
+        "💬 Emotional check-ins"
+      ]
+    },
+    {
+      id: "q30_why_now",
+      type: "text",
+      question:
+        "And finally… why is NOW the right time for you to build something?",
+      placeholder:
+        "This is your line in the sand. One honest sentence."
+    },
+    {
       id: "q14_best_email",
       type: "email",
       question:
-        "And what's the best email for your custom Legacy Builder plan to land in?",
+        "And what's the best email for your custom Legacy Builder plan to land in? Use the same one you used to download your Real Brick Road™ booklet.",
       placeholder: "Best email for your plan."
     }
   ];

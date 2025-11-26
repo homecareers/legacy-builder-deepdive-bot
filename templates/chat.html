@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ANGUS™ — Legacy Builder Deep Dive</title>
+  <title>ANGUS™ — Builder Deep Dive (Q07–Q30)</title>
   <style>
     body {
       font-family: 'Inter', Arial, sans-serif;
@@ -37,10 +37,6 @@
       color: #D4A72C;
       margin-bottom: 4px;
     }
-    .bot strong { color: #D4A72C; }
-    .options {
-      margin-top: 10px;
-    }
     .options button {
       display: block;
       width: 100%;
@@ -55,18 +51,14 @@
       font-size: 15px;
       transition: all 0.2s ease;
     }
-    .options button:hover {
-      background: #D4A72C;
-      color: #050608;
-      transform: translateY(-2px);
-      box-shadow: 0 0 18px rgba(212,167,44,0.45);
-    }
+    .options button:hover,
     .options button.selected {
       background: #D4A72C;
       color: #050608;
       box-shadow: 0 0 18px rgba(212,167,44,0.45);
+      transform: translateY(-2px);
     }
-    input, textarea {
+    textarea, input {
       width: 100%;
       padding: 12px;
       margin-top: 10px;
@@ -78,7 +70,10 @@
       box-sizing: border-box;
       font-family: 'Inter', Arial, sans-serif;
     }
-    textarea { min-height: 90px; resize: vertical; }
+    textarea { 
+      min-height: 90px; 
+      resize: vertical; 
+    }
     input:focus, textarea:focus {
       outline: none;
       border-color: #D4A72C;
@@ -113,9 +108,9 @@
       to   { opacity: 1; transform: translateY(0); }
     }
     @keyframes dots {
-      0%   { content: ""; }
-      33%  { content: "."; }
-      66%  { content: ".."; }
+      0% { content: ""; }
+      33% { content: "."; }
+      66% { content: ".."; }
       100% { content: "..."; }
     }
     @media(max-width: 600px) {
@@ -128,24 +123,24 @@
   <div class="chat-box" id="chat"></div>
 
   <script>
-    const chat = document.getElementById('chat');
+    const chat = document.getElementById("chat");
     const BACKEND_URL = "/submit";
 
-    // ---------------- DEEP DIVE QUESTION SET (Q7-Q30) ---------------- //
-    // This is Part 2 of the survey - questions are numbered Q7-Q30 intentionally
+    // =============================
+    // Q07–Q30 EXACTLY AS PROVIDED
+    // =============================
 
     const steps = [
-      // Q07 — TEXTBOX: Where do you show up online right now — and how big is your audience there?
-      {
-        type: "text",
-        question: "Q7 — Where do you show up online right now — and how big is your audience there?",
-        placeholder: "Example: Mostly Facebook (~800 friends), IG (~350 followers), email list (~120), etc."
+
+      // Q07
+      { type: "text",
+        question: "Q07 — Where do you show up online right now — and how big is your audience there?",
+        placeholder: "Be specific. Example: Facebook (800 friends), IG (350 followers)..."
       },
 
-      // Q08 — Social Presence Snapshot — single-select
-      {
-        type: "single",
-        question: "Q8 — Social Presence Snapshot",
+      // Q08
+      { type: "single",
+        question: "Q08 — Social Presence Snapshot",
         options: [
           "🧍‍♂️ I barely post — mostly invisible online",
           "📅 I post sometimes, but not consistently",
@@ -157,198 +152,322 @@
         ]
       },
 
-      // Q09 — Content Confidence (1–10) — single-select
-      {
-        type: "single",
-        question: "Q9 — Content Confidence (1–10). How confident do you feel showing up and creating content right now?",
+      // Q09
+      { type: "single",
+        question: "Q09 — Content Confidence (1–10)",
         options: [
-          "1️⃣ 1 – I avoid creating content",
+          "1️⃣ 1 – I freeze up. Zero confidence.",
           "2️⃣ 2",
           "3️⃣ 3",
           "4️⃣ 4",
-          "5️⃣ 5 – I'll do it if I have to",
+          "5️⃣ 5 – I could try with help.",
+          "6️⃣ 6",
+          "7️⃣ 7",
+          "8️⃣ 8 – I'm comfortable.",
+          "9️⃣ 9",
+          "🔟 10 – Give me the plan, Commander."
+        ]
+      },
+
+      // Q10
+      { type: "text",
+        question: "Q10 — 90-Day Definition of 'This WORKED'",
+        placeholder: "Paint the picture. What does it worked look like?"
+      },
+
+      // Q11
+      { type: "single",
+        question: "Q11 — Desired Outcome",
+        options: [
+          "💰 More income",
+          "🕊 More freedom",
+          "💪 More confidence",
+          "⚡️ More energy",
+          "📅 More structure",
+          "🎯 More purpose",
+          "🤝 More community",
+          "✍️ Something else (type in)"
+        ]
+      },
+
+      // Q12
+      { type: "text",
+        question: "Q12 — Why That Outcome Matters",
+        placeholder: "Why does this outcome matter emotionally or practically?"
+      },
+
+      // Q13
+      { type: "text",
+        question: "Q13 — Weekly Schedule Reality",
+        placeholder: "Describe your real weekly schedule. No sugarcoating."
+      },
+
+      // Q14
+      { type: "multi",
+        question: "Q14 — Highest Energy Windows",
+        options: [
+          "🌅 Early morning (5–8am)",
+          "🌞 Mid-morning (8–11am)",
+          "🍱 Afternoon (11am–3pm)",
+          "🌇 Late afternoon (3–6pm)",
+          "🌙 Evening (6–9pm)",
+          "🌌 Late night (9pm+)",
+          "🔄 It varies",
+          "⚡️ Depends on my work/kids schedule"
+        ]
+      },
+
+      // Q15
+      { type: "text",
+        question: "Q15 — Commitments We Must Build Around",
+        placeholder: "Work, family, church, kids, sports, appointments, etc."
+      },
+
+      // Q16
+      { type: "multi",
+        question: "Q16 — What Helps You Stay Consistent?",
+        options: [
+          "🗺 Clear steps",
+          "📊 Tracking progress",
+          "🙋‍♀️ Accountability",
+          "👥 Community support",
+          "📆 Routine + structure",
+          "🧠 Strong why",
+          "⏱ Deadlines",
+          "🔥 Momentum",
+          "✍️ Other"
+        ]
+      },
+
+      // Q17
+      { type: "multi",
+        question: "Q17 — What Usually Pulls You Off Track?",
+        options: [
+          "🧱 Lack of structure",
+          "🌀 Overthinking",
+          "🌪 Life chaos",
+          "😬 Doubting myself",
+          "🔇 Losing momentum",
+          "🎭 Trying to do it alone",
+          "⏰ Too many responsibilities",
+          "💭 Not seeing results fast enough",
+          "✍️ Other"
+        ]
+      },
+
+      // Q18
+      { type: "single",
+        question: "Q18 — Stress/Discouragement Response",
+        options: [
+          "📴 I shut down",
+          "🐢 I slow way down",
+          "🧗‍♂️ I push harder",
+          "🙈 I avoid tasks",
+          "🤯 I get overwhelmed",
+          "🙋‍♂️ I ask for help",
+          "🔄 It depends"
+        ]
+      },
+
+      // Q19
+      { type: "multi",
+        question: "Q19 — Strengths You Bring",
+        options: [
+          "🗣 Talking to people",
+          "💬 Encouraging others",
+          "📱 Social posting",
+          "🎨 Creativity",
+          "🧹 Organization",
+          "🔁 Consistency",
+          "🎓 Learning quickly",
+          "📝 Following a plan",
+          "🔊 Storytelling",
+          "🌱 Leadership potential",
+          "✍️ Other"
+        ]
+      },
+
+      // Q20
+      { type: "single",
+        question: "Q20 — Skill You Want the MOST Help With",
+        options: [
+          "🗣 Talking to people confidently",
+          "✍️ Posting content consistently",
+          "🤝 Starting conversations",
+          "🔁 Following a daily system",
+          "⏱ Time management",
+          "🔥 Building habit momentum",
+          "🎯 Staying accountable",
+          "🧩 Understanding the business flow",
+          "✨ Something else"
+        ]
+      },
+
+      // Q21
+      { type: "single",
+        question: "Q21 — System-Following Confidence (1–10)",
+        options: [
+          "1️⃣ 1",
+          "2️⃣ 2",
+          "3️⃣ 3",
+          "4️⃣ 4",
+          "5️⃣ 5",
           "6️⃣ 6",
           "7️⃣ 7",
           "8️⃣ 8",
           "9️⃣ 9",
-          "🔟 10 – I'm fully confident showing up"
+          "🔟 10"
         ]
       },
 
-      // ---- Questions Q10-Q30 continue from here ----
+      // Q22
+      { type: "text",
+        question: "Q22 — What Would $300–$800/month Support Right Now?",
+        placeholder: "Where would that income go? Be real about it."
+      },
 
-      { type: "single", question: "Q10 — When you picture your ideal business life 2–3 years from now, what feels most important?", options: [
-        "Time freedom with stable income",
-        "Scaling meaningful impact",
-        "Building a team + community",
-        "Replacing or exceeding my current income",
-        "Proving to myself I can actually do it"
-      ]},
-      { type: "single", question: "Q11 — Right now, where do you mostly show up online?", options: [
-        "Facebook",
-        "Instagram",
-        "TikTok",
-        "YouTube",
-        "Other / I barely show up"
-      ]},
-      { type: "single", question: "Q12 — How would you describe your current consistency with posting or creating content?", options: [
-        "I rarely post",
-        "I post sometimes but not consistently",
-        "I'm consistent but not business-focused yet",
-        "I'm consistent and intentional with content"
-      ]},
-      { type: "single", question: "Q13 — When it comes to talking about products or opportunities online…", options: [
-        "I'm confident and comfortable",
-        "I'm willing but nervous",
-        "I mostly avoid it right now",
-        "Haven't really tried yet"
-      ]},
-      { type: "single", question: "Q14 — How do you feel about learning new tech/tools?", options: [
-        "Love it — I pick it up fast",
-        "I can learn it with clear steps",
-        "I get overwhelmed easily",
-        "I'd rather keep it super simple"
-      ]},
-      { type: "single", question: "Q15 — How do you prefer to be coached?", options: [
-        "Direct and straightforward",
-        "Encouraging and supportive",
-        "Step-by-step with examples",
-        "Give me the target and let me run"
-      ]},
-      { type: "single", question: "Q16 — In a perfect world, how many hours per week would you eventually like to be investing into your business?", options: [
-        "5–10 hours",
-        "10–15 hours",
-        "15–20 hours",
-        "20+ hours"
-      ]},
-      { type: "single", question: "Q17 — What best describes your current financial starting point?", options: [
-        "I'm comfortable but want more options",
-        "I'm tight and need relief fast",
-        "I'm rebuilding from a setback",
-        "I'm stable and focused on growth"
-      ]},
-      { type: "single", question: "Q18 — What feels MOST natural when it comes to connecting with people?", options: [
-        "One-on-one conversations",
-        "Small group settings",
-        "Online messages / DM chats",
-        "Creating content that people respond to"
-      ]},
-      { type: "single", question: "Q19 — Which statement feels most true about your confidence level?", options: [
-        "I'm confident — I just need a system",
-        "I'm confident in some areas, shaky in others",
-        "My confidence is rebuilding",
-        "I'm not confident yet, but I'm willing"
-      ]},
-      { type: "single", question: "Q20 — How do you respond when a plan doesn't work the first time?", options: [
-        "I regroup and try again",
-        "I need someone to walk through it with me",
-        "I tend to shut down and avoid it",
-        "I overthink what went wrong"
-      ]},
-      { type: "multi", question: "Q21 — What kind of support will help you actually follow through? (Select all that apply.)", options: [
-        "Clear weekly targets",
-        "Accountability check-ins",
-        "Community / team energy",
-        "Simple scripts and language",
-        "Visual trackers or dashboards"
-      ]},
-      { type: "single", question: "Q22 — When you think about earning with this, what feels most aligned?", options: [
-        "A solid side income",
-        "Replacing my current income",
-        "Building a serious long-term business",
-        "I'm still feeling this out"
-      ]},
-      { type: "single", question: "Q23 — If we built you a simple daily method of operation (DMO), what's realistic for you right now?", options: [
-        "20–30 minutes per day",
-        "30–60 minutes per day",
-        "60–90 minutes per day",
-        "More than 90 minutes per day"
-      ]},
-      { type: "single", question: "Q24 — Which GEM style do you FEEL you resonate with most?", options: [
-        "Pearl — heart, connection, service",
-        "Ruby — recognition, fun, energy",
-        "Sapphire — structure, systems, clarity",
-        "Emerald — goals, numbers, wealth-building",
-        "Not sure yet"
-      ]},
-      { type: "multi", question: "Q25 — What usually pulls you OFF track when you set big goals? (Select all that apply.)", options: [
-        "Life chaos and distractions",
-        "No clear plan or structure",
-        "Lack of encouragement or community",
-        "Fear of judgment or failure",
-        "Time management / overwhelm"
-      ]},
-      { type: "multi", question: "Q26 — How do you prefer to track progress? (Select all that apply.)", options: [
-        "Daily check marks",
-        "Income movement",
-        "Emotional / energy check-ins",
-        "Visual charts / dashboards",
-        "Stories of people I've helped"
-      ]},
-      { type: "text", question: "Q27 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what's really true for you here..." },
-      { type: "text", question: "Q28 — What are the top 1–2 fears or hesitations you want your coach to know before you start?", placeholder: "Be honest. This helps us coach you better." },
-      { type: "text", question: "Q29 — What strengths do you bring to the table that we can build on together?", placeholder: "Skills, experience, personality, anything that makes you an asset." },
-      { type: "text", question: "Q30 — What does a WIN in the next 90 days look like for you?", placeholder: "Describe it in your own words." },
+      // Q23
+      { type: "text",
+        question: "Q23 — Biggest Fear or Hesitation",
+        placeholder: "What scares you or makes you hesitate? No emojis."
+      },
 
-      // Step 25 - Email (not counted in the 24 DD answers)
-      { type: "email", question: "And finally… what's the BEST email for your custom 90-day Legacy Builder projection?" }
+      // Q24
+      { type: "text",
+        question: "Q24 — If Nothing Changes in 6 Months, What Worries You Most?",
+        placeholder: "Write what's true. This helps your coach lead you."
+      },
+
+      // Q25
+      { type: "text",
+        question: "Q25 — Who You Want to Become in 12 Months",
+        placeholder: "Describe the version of you we're building."
+      },
+
+      // Q26
+      { type: "single",
+        question: "Q26 — One Feeling You NEVER Want Again",
+        options: [
+          "😞 Feeling stuck",
+          "😰 Anxiety",
+          "😤 Overwhelm",
+          "😔 Insecurity",
+          "😩 Exhaustion",
+          "🥱 Burnout",
+          "🧍‍♂️ Feeling alone",
+          "✍️ Other"
+        ]
+      },
+
+      // Q27
+      { type: "single",
+        question: "Q27 — One Feeling You WANT as Your Baseline",
+        options: [
+          "💪 Confidence",
+          "✨ Clarity",
+          "🔋 Energy",
+          "🌼 Peace",
+          "🚀 Momentum",
+          "🎯 Purpose",
+          "😄 Joy",
+          "🔥 Drive"
+        ]
+      },
+
+      // Q28
+      { type: "single",
+        question: "Q28 — Preferred Accountability Style",
+        options: [
+          "🤝 Gentle encouragement",
+          "🔥 Direct challenge",
+          "🧭 Step-by-step guidance",
+          "🧘 Light-touch check-ins",
+          "👯 Partnership/teamwork",
+          "🎯 Hybrid approach"
+        ]
+      },
+
+      // Q29
+      { type: "multi",
+        question: "Q29 — Preferred Tracking Style",
+        options: [
+          "☑️ Daily check marks",
+          "🏆 Weekly wins",
+          "🔋 Energy levels",
+          "💛 Confidence levels",
+          "💵 Income movement",
+          "🧬 Habit improvements",
+          "💬 Emotional check-ins"
+        ]
+      },
+
+      // Q30
+      { type: "text",
+        question: "Q30 — Why is NOW the right time to build something?",
+        placeholder: "This is your emotional tattoo moment."
+      },
+
+      // Email
+      { type: "email",
+        question: "Finally — what's the BEST email for your 90-day Legacy Builder projection?"
+      }
     ];
 
-    const TOTAL_STEPS = steps.length; // 25 (24 DD answers + email)
-    let currentStep = -1;
-    let answers = [];      // Will hold 24 Deep Dive answers (Q7-Q30)
-    let userEmail = "";
+    // =============================
+    // WORKING ENGINE 
+    // =============================
 
-    // ---------------- MESSAGE FUNCTIONS ---------------- //
+    const TOTAL_STEPS = steps.length;
+    let currentStep = -1;
+    let answers = [];
+    let userEmail = "";
 
     function showBotMessage(msg) {
       chat.innerHTML += `<div class="message bot">${msg}</div>`;
       chat.scrollTop = chat.scrollHeight;
     }
-
+    
     function showUserMessage(msg) {
       chat.innerHTML += `<div class="message user">${msg}</div>`;
       chat.scrollTop = chat.scrollHeight;
     }
-
+    
     function showLoading() {
       chat.innerHTML += `<div class="message loading" id="loading">ANGUS is thinking</div>`;
       chat.scrollTop = chat.scrollHeight;
     }
-
+    
     function hideLoading() {
       const l = document.getElementById("loading");
       if (l) l.remove();
     }
 
-    // ---------------- RENDER STEPS ---------------- //
-
     function renderStep() {
       currentStep++;
-
+      
       if (currentStep >= TOTAL_STEPS) return;
 
       const step = steps[currentStep];
-
       showLoading();
+
       setTimeout(() => {
         hideLoading();
 
-        const label = `<div class="step-label">Step ${currentStep + 1} of ${TOTAL_STEPS}</div>`;
-        showBotMessage(label + step.question);
+        showBotMessage(
+          `<div class='step-label'>Step ${currentStep + 1} of ${TOTAL_STEPS}</div>` +
+          step.question
+        );
 
         if (step.type === "single" || step.type === "multi") {
-          // Create options container with data attributes
-          let html = `<div class="options" data-step="${currentStep}" data-type="${step.type}">`;
+          let html = `<div class="options" id="options-${currentStep}">`;
           step.options.forEach((opt, idx) => {
-            // Use data attributes to store the option value - no escaping needed!
-            html += `<button class="option-btn" data-value="${btoa(encodeURIComponent(opt))}">${opt}</button>`;
+            html += `<button class="option-btn" data-step="${currentStep}" data-type="${step.type}" data-index="${idx}">${opt}</button>`;
           });
           html += `</div>`;
           chat.innerHTML += html;
 
           if (step.type === "multi") {
-            chat.innerHTML += `<button class="next-btn" data-action="finalize-multi" data-step="${currentStep}">Next</button>`;
+            chat.innerHTML += `<button class="next-btn" id="next-${currentStep}">Next</button>`;
           }
         }
 
@@ -356,148 +475,130 @@
           chat.innerHTML += `
             <div id="text-block-${currentStep}">
               <textarea id="text-input-${currentStep}" placeholder="${step.placeholder || ''}"></textarea>
-              <button class="next-btn" data-action="save-text" data-step="${currentStep}">Next</button>
-            </div>
-          `;
+              <button class="next-btn" id="text-next-${currentStep}">Next</button>
+            </div>`;
         }
 
         if (step.type === "email") {
           chat.innerHTML += `
             <div id="email-block">
-              <input id="email-input" type="email" placeholder="Enter your email...">
-              <button class="submit-btn" data-action="save-email">Submit</button>
-            </div>
-          `;
+              <input id="email-input" type="text" placeholder="Enter your email address...">
+              <button class="submit-btn" id="email-submit">Submit</button>
+            </div>`;
         }
 
         chat.scrollTop = chat.scrollHeight;
-
+        setupEventListeners();
+        
       }, 700);
     }
 
-    // ---------------- EVENT DELEGATION HANDLER ---------------- //
-
-    // Use a single event listener on the chat container for all clicks
-    chat.addEventListener('click', function(e) {
-      const target = e.target;
-      
-      // Handle option button clicks
-      if (target.classList.contains('option-btn')) {
-        const container = target.parentElement;
-        const type = container.dataset.type;
-        const encodedValue = target.dataset.value;
-        const value = decodeURIComponent(atob(encodedValue));
-        
-        if (type === 'single') {
-          // Single select - clear other selections
-          container.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
-          target.classList.add('selected');
-          showUserMessage(value);
-          answers.push(value);
+    function setupEventListeners() {
+      // Option buttons
+      document.querySelectorAll('.option-btn').forEach(btn => {
+        btn.onclick = function() {
+          const stepNum = parseInt(this.dataset.step);
+          const type = this.dataset.type;
+          const index = parseInt(this.dataset.index);
+          const value = steps[stepNum].options[index];
           
-          // Remove options and any next button
-          container.remove();
-          const nextBtn = chat.querySelector('.next-btn');
-          if (nextBtn) nextBtn.remove();
-          
-          setTimeout(renderStep, 300);
-        } else if (type === 'multi') {
-          // Multi select - toggle selection
-          target.classList.toggle('selected');
-        }
-      }
-      
-      // Handle Next button clicks
-      if (target.classList.contains('next-btn')) {
-        const action = target.dataset.action;
-        const stepIdx = parseInt(target.dataset.step);
-        
-        if (action === 'finalize-multi') {
-          finalizeMulti(stepIdx);
-        } else if (action === 'save-text') {
-          saveText(stepIdx);
-        }
-      }
-      
-      // Handle Submit button click
-      if (target.classList.contains('submit-btn')) {
-        if (target.dataset.action === 'save-email') {
-          saveEmail();
-        }
-      }
-    });
-
-    // ---------------- ANSWER CAPTURE FUNCTIONS ---------------- //
-
-    function finalizeMulti(stepIndex) {
-      const container = document.querySelector(`.options[data-step="${stepIndex}"]`);
-      if (!container) return;
-      
-      const selected = [...container.querySelectorAll('button.selected')].map(btn => {
-        const encodedValue = btn.dataset.value;
-        return decodeURIComponent(atob(encodedValue));
+          if (type === 'single') {
+            this.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            showUserMessage(value);
+            answers.push(value);
+            
+            this.parentElement.remove();
+            const nextBtn = document.getElementById(`next-${stepNum}`);
+            if (nextBtn) nextBtn.remove();
+            
+            setTimeout(renderStep, 300);
+          } else {
+            this.classList.toggle('selected');
+          }
+        };
       });
-
-      if (selected.length === 0) {
-        showBotMessage("Select at least one option before moving on.");
-        return;
+      
+      // Multi-select Next buttons
+      document.querySelectorAll('.next-btn').forEach(btn => {
+        if (btn.id.startsWith('next-')) {
+          btn.onclick = function() {
+            const stepNum = parseInt(this.id.replace('next-', ''));
+            const container = document.getElementById(`options-${stepNum}`);
+            const selected = [...container.querySelectorAll('button.selected')].map(b => {
+              const idx = parseInt(b.dataset.index);
+              return steps[stepNum].options[idx];
+            });
+            
+            if (selected.length === 0) {
+              showBotMessage("Select at least one option.");
+              return;
+            }
+            
+            showUserMessage(selected.join(", "));
+            answers.push(selected.join(", "));
+            container.remove();
+            this.remove();
+            
+            setTimeout(renderStep, 300);
+          };
+        }
+        
+        // Text Next buttons
+        if (btn.id.startsWith('text-next-')) {
+          btn.onclick = function() {
+            const stepNum = parseInt(this.id.replace('text-next-', ''));
+            const input = document.getElementById(`text-input-${stepNum}`);
+            const val = input.value.trim();
+            
+            if (!val) {
+              showBotMessage("Type your answer to continue.");
+              return;
+            }
+            
+            showUserMessage(val);
+            answers.push(val);
+            
+            document.getElementById(`text-block-${stepNum}`).remove();
+            setTimeout(renderStep, 300);
+          };
+        }
+      });
+      
+      // Email submit button
+      const emailSubmit = document.getElementById('email-submit');
+      if (emailSubmit) {
+        emailSubmit.onclick = function() {
+          const emailInput = document.getElementById("email-input");
+          const email = emailInput.value.trim();
+          
+          // Basic email validation
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          
+          if (!email) {
+            showBotMessage("Please enter your email address to continue.");
+            return;
+          }
+          
+          if (!emailRegex.test(email)) {
+            showBotMessage("Please enter a valid email address (example: name@company.com)");
+            emailInput.style.borderColor = '#ff6b6b';
+            emailInput.focus();
+            return;
+          }
+          
+          userEmail = email;
+          showUserMessage(email);
+          document.getElementById("email-block").remove();
+          submitSurvey();
+        };
       }
-      
-      const summary = selected.join(", ");
-      showUserMessage(summary);
-      answers.push(summary);
-      
-      container.remove();
-      const nb = chat.querySelector('.next-btn');
-      if (nb) nb.remove();
-      
-      setTimeout(renderStep, 300);
     }
-
-    function saveText(stepIndex) {
-      const input = document.getElementById(`text-input-${stepIndex}`);
-      if (!input) return;
-      
-      const val = input.value.trim();
-      if (!val) {
-        showBotMessage("Go ahead — type your answer. It doesn't have to be perfect.");
-        return;
-      }
-      
-      showUserMessage(val);
-      answers.push(val);
-      
-      const blk = document.getElementById(`text-block-${stepIndex}`);
-      if (blk) blk.remove();
-      
-      setTimeout(renderStep, 300);
-    }
-
-    function saveEmail() {
-      const input = document.getElementById("email-input");
-      if (!input) return;
-      
-      const email = input.value.trim();
-      if (!email) {
-        showBotMessage("I'll need your email so your coach can prep your custom 90-day projection.");
-        return;
-      }
-      
-      userEmail = email;
-      showUserMessage(email);
-      
-      const blk = document.getElementById("email-block");
-      if (blk) blk.remove();
-      
-      submitSurvey();
-    }
-
-    // ---------------- SUBMIT SURVEY ---------------- //
 
     function submitSurvey() {
       showLoading();
 
-      // Ensure answers is an array (defensive programming)
+      // Ensure answers is an array
       if (!Array.isArray(answers)) answers = [];
 
       fetch(BACKEND_URL, {
@@ -505,29 +606,34 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
-          answers: answers  // 24 answers for Q7-Q30
+          answers: answers  // 24 answers for Q07-Q30
         })
       })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Server responded with status ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
         hideLoading();
         if (data.redirect_url) {
           window.top.location.href = data.redirect_url;
         } else {
-          showBotMessage("Something glitched. Refresh and try again.");
+          showBotMessage("Success! Your responses have been recorded.");
         }
       })
       .catch(err => {
-        console.error(err);
+        console.error("Submit error:", err);
         hideLoading();
-        showBotMessage("Server issue. Refresh and try again.");
+        showBotMessage("There was an issue submitting your responses. Please refresh and try again.");
       });
     }
 
-    // ---------------- INIT ---------------- //
-
     window.onload = () => {
-      showBotMessage("Alright legend — I'm ANGUS™. This Deep Dive locks in the intel your coach will use to build your 90-day Legacy Builder projection with precision. Answer honestly — this is for YOU.");
+      showBotMessage(
+        "Alright legend — I'm ANGUS™. We're about to get precise. Answer honestly. This is for YOUR 90-day build."
+      );
       setTimeout(renderStep, 1400);
     };
 

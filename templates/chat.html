@@ -131,121 +131,160 @@
     // ---------------- DEEP DIVE QUESTION SET ---------------- //
 
     const steps = [
-      { type: "single", question: "Q7 — When you picture your ideal business life 2–3 years from now, what feels most important?", options: [
+      // Q07 — TEXTBOX: Where do you show up online right now — and how big is your audience there?
+      {
+        type: "text",
+        question: "Q7 — Where do you show up online right now — and how big is your audience there?",
+        placeholder: "Example: Mostly Facebook (~800 friends), IG (~350 followers), email list (~120), etc."
+      },
+
+      // Q08 — Social Presence Snapshot — single-select
+      {
+        type: "single",
+        question: "Q8 — Social Presence Snapshot",
+        options: [
+          "🧍‍♂️ I barely post — mostly invisible online",
+          "📅 I post sometimes, but not consistently",
+          "🔁 I post consistently but not business-focused yet",
+          "👀 Small audience, light engagement",
+          "🔥 Engaged community — people respond to me",
+          "🎥 I create content regularly (stories, reels, videos)",
+          "👻 I mostly consume — not a creator yet"
+        ]
+      },
+
+      // Q09 — Content Confidence (1–10) — single-select
+      {
+        type: "single",
+        question: "Q9 — Content Confidence (1–10). How confident do you feel showing up and creating content right now?",
+        options: [
+          "1️⃣ 1 – I avoid creating content",
+          "2️⃣ 2",
+          "3️⃣ 3",
+          "4️⃣ 4",
+          "5️⃣ 5 – I’ll do it if I have to",
+          "6️⃣ 6",
+          "7️⃣ 7",
+          "8️⃣ 8",
+          "9️⃣ 9",
+          "🔟 10 – I’m fully confident showing up"
+        ]
+      },
+
+      // ---- From here down, same structure as last file ----
+
+      { type: "single", question: "Q10 — When you picture your ideal business life 2–3 years from now, what feels most important?", options: [
         "Time freedom with stable income",
         "Scaling meaningful impact",
         "Building a team + community",
         "Replacing or exceeding my current income",
         "Proving to myself I can actually do it"
       ]},
-      { type: "single", question: "Q8 — Right now, where do you mostly show up online?", options: [
+      { type: "single", question: "Q11 — Right now, where do you mostly show up online?", options: [
         "Facebook",
         "Instagram",
         "TikTok",
         "YouTube",
         "Other / I barely show up"
       ]},
-      { type: "single", question: "Q9 — How would you describe your current consistency with posting or creating content?", options: [
+      { type: "single", question: "Q12 — How would you describe your current consistency with posting or creating content?", options: [
         "I rarely post",
         "I post sometimes but not consistently",
         "I'm consistent but not business-focused yet",
         "I'm consistent and intentional with content"
       ]},
-      { type: "single", question: "Q10 — When it comes to talking about products or opportunities online…", options: [
+      { type: "single", question: "Q13 — When it comes to talking about products or opportunities online…", options: [
         "I’m confident and comfortable",
         "I’m willing but nervous",
         "I mostly avoid it right now",
         "Haven’t really tried yet"
       ]},
-      { type: "single", question: "Q11 — How do you feel about learning new tech/tools?", options: [
+      { type: "single", question: "Q14 — How do you feel about learning new tech/tools?", options: [
         "Love it — I pick it up fast",
         "I can learn it with clear steps",
         "I get overwhelmed easily",
         "I'd rather keep it super simple"
       ]},
-      { type: "single", question: "Q12 — How do you prefer to be coached?", options: [
+      { type: "single", question: "Q15 — How do you prefer to be coached?", options: [
         "Direct and straightforward",
         "Encouraging and supportive",
         "Step-by-step with examples",
         "Give me the target and let me run"
       ]},
-      { type: "single", question: "Q13 — In a perfect world, how many hours per week would you eventually like to be investing into your business?", options: [
+      { type: "single", question: "Q16 — In a perfect world, how many hours per week would you eventually like to be investing into your business?", options: [
         "5–10 hours",
         "10–15 hours",
         "15–20 hours",
         "20+ hours"
       ]},
-      { type: "single", question: "Q14 — What best describes your current financial starting point?", options: [
+      { type: "single", question: "Q17 — What best describes your current financial starting point?", options: [
         "I’m comfortable but want more options",
         "I’m tight and need relief fast",
         "I’m rebuilding from a setback",
         "I’m stable and focused on growth"
       ]},
-      { type: "single", question: "Q15 — What feels MOST natural when it comes to connecting with people?", options: [
+      { type: "single", question: "Q18 — What feels MOST natural when it comes to connecting with people?", options: [
         "One-on-one conversations",
         "Small group settings",
         "Online messages / DM chats",
         "Creating content that people respond to"
       ]},
-      { type: "single", question: "Q16 — Which statement feels most true about your confidence level?", options: [
+      { type: "single", question: "Q19 — Which statement feels most true about your confidence level?", options: [
         "I’m confident — I just need a system",
         "I’m confident in some areas, shaky in others",
         "My confidence is rebuilding",
         "I’m not confident yet, but I’m willing"
       ]},
-      { type: "single", question: "Q17 — How do you respond when a plan doesn’t work the first time?", options: [
+      { type: "single", question: "Q20 — How do you respond when a plan doesn’t work the first time?", options: [
         "I regroup and try again",
         "I need someone to walk through it with me",
         "I tend to shut down and avoid it",
         "I overthink what went wrong"
       ]},
-      { type: "multi", question: "Q18 — What kind of support will help you actually follow through? (Select all that apply.)", options: [
+      { type: "multi", question: "Q21 — What kind of support will help you actually follow through? (Select all that apply.)", options: [
         "Clear weekly targets",
         "Accountability check-ins",
         "Community / team energy",
         "Simple scripts and language",
         "Visual trackers or dashboards"
       ]},
-      { type: "single", question: "Q19 — When you think about earning with this, what feels most aligned?", options: [
+      { type: "single", question: "Q22 — When you think about earning with this, what feels most aligned?", options: [
         "A solid side income",
         "Replacing my current income",
         "Building a serious long-term business",
         "I’m still feeling this out"
       ]},
-      { type: "single", question: "Q20 — If we built you a simple daily method of operation (DMO), what’s realistic for you right now?", options: [
+      { type: "single", question: "Q23 — If we built you a simple daily method of operation (DMO), what’s realistic for you right now?", options: [
         "20–30 minutes per day",
         "30–60 minutes per day",
         "60–90 minutes per day",
         "More than 90 minutes per day"
       ]},
-      { type: "single", question: "Q21 — Which GEM style do you FEEL you resonate with most?", options: [
+      { type: "single", question: "Q24 — Which GEM style do you FEEL you resonate with most?", options: [
         "Pearl — heart, connection, service",
         "Ruby — recognition, fun, energy",
         "Sapphire — structure, systems, clarity",
         "Emerald — goals, numbers, wealth-building",
         "Not sure yet"
       ]},
-      { type: "multi", question: "Q22 — What usually pulls you OFF track when you set big goals? (Select all that apply.)", options: [
+      { type: "multi", question: "Q25 — What usually pulls you OFF track when you set big goals? (Select all that apply.)", options: [
         "Life chaos and distractions",
         "No clear plan or structure",
         "Lack of encouragement or community",
         "Fear of judgment or failure",
         "Time management / overwhelm"
       ]},
-      { type: "multi", question: "Q23 — How do you prefer to track progress? (Select all that apply.)", options: [
+      { type: "multi", question: "Q26 — How do you prefer to track progress? (Select all that apply.)", options: [
         "Daily check marks",
         "Income movement",
         "Emotional / energy check-ins",
         "Visual charts / dashboards",
         "Stories of people I’ve helped"
       ]},
-      { type: "text", question: "Q24 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what’s really true for you here..." },
-      { type: "text", question: "Q25 — What are the top 1–2 fears or hesitations you want your coach to know before you start?", placeholder: "Be honest. This helps us coach you better." },
-      { type: "text", question: "Q26 — What strengths do you bring to the table that we can build on together?", placeholder: "Skills, experience, personality, anything that makes you an asset." },
-      { type: "text", question: "Q27 — What does a WIN in the next 90 days look like for you?", placeholder: "Describe it in your own words." },
-      { type: "text", question: "Q28 — Is there anything from your past business or work experience that we should *not* repeat this time?", placeholder: "Patterns, approaches, or situations you’re done with." },
-      { type: "text", question: "Q29 — How do you want your coach to show up for you when you’re struggling?", placeholder: "Direct tough love, gentle encouragement, structured action steps, etc." },
-      { type: "text", question: "Q30 — Anything else you want us to know about your vision, life season, or expectations?", placeholder: "Optional, but powerful if you share it." },
+      { type: "text", question: "Q27 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what’s really true for you here..." },
+      { type: "text", question: "Q28 — What are the top 1–2 fears or hesitations you want your coach to know before you start?", placeholder: "Be honest. This helps us coach you better." },
+      { type: "text", question: "Q29 — What strengths do you bring to the table that we can build on together?", placeholder: "Skills, experience, personality, anything that makes you an asset." },
+      { type: "text", question: "Q30 — What does a WIN in the next 90 days look like for you?", placeholder: "Describe it in your own words." },
 
       // Step 25 - Email
       { type: "email", question: "And finally… what’s the BEST email for your custom 90-day Legacy Builder projection?" }
@@ -296,7 +335,7 @@
 
         if (step.type === "single" || step.type === "multi") {
           let html = `<div class="options">`;
-          step.options.forEach((opt, idx) => {
+          step.options.forEach((opt) => {
             const safe = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             html += `<button onclick="handleOption('${step.type}', '${safe}', this)">${opt}</button>`;
           });
@@ -311,7 +350,7 @@
         if (step.type === "text") {
           chat.innerHTML += `
             <div id="text-block-${currentStep}">
-              <textarea id="text-input-${currentStep}" placeholder="${step.placeholder}"></textarea>
+              <textarea id="text-input-${currentStep}" placeholder="${step.placeholder || ''}"></textarea>
               <button class="next-btn" onclick="saveText('${currentStep}')">Next</button>
             </div>
           `;
@@ -360,7 +399,8 @@
       showUserMessage(selected.join(", "));
       answers.push(selected.join(", "));
       container.remove();
-      chat.querySelector(".next-btn").remove();
+      const nb = chat.querySelector(".next-btn");
+      if (nb) nb.remove();
       setTimeout(renderStep, 300);
     }
 
@@ -372,7 +412,8 @@
       }
       showUserMessage(val);
       answers.push(val);
-      document.getElementById(`text-block-${stepIndex}`).remove();
+      const blk = document.getElementById(`text-block-${stepIndex}`);
+      if (blk) blk.remove();
       setTimeout(renderStep, 300);
     }
 
@@ -384,11 +425,12 @@
       }
       userEmail = email;
       showUserMessage(email);
-      document.getElementById("email-block").remove();
+      const blk = document.getElementById("email-block");
+      if (blk) blk.remove();
       submitSurvey();
     }
 
-    // ---------------- SUBMIT SURVEY (THE CRITICAL FIX) ---------------- //
+    // ---------------- SUBMIT SURVEY ---------------- //
 
     function submitSurvey() {
       showLoading();
@@ -422,7 +464,7 @@
     // ---------------- INIT ---------------- //
 
     window.onload = () => {
-      showBotMessage("Alright legend — I’m ANGUS™. This Deep Dive locks in the intel your coach will use to build your 90-day Legacy Builder projection with precision.");
+      showBotMessage("Alright legend — I’m ANGUS™. This Deep Dive locks in the intel your coach will use to build your 90-day Legacy Builder projection with precision. Answer honestly — this is for YOU.");
       setTimeout(renderStep, 1400);
     };
 

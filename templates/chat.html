@@ -118,6 +118,9 @@
       66%  { content: ".."; }
       100% { content: "..."; }
     }
+    @media(max-width: 600px) {
+      .chat-box { padding: 20px; margin: 10px auto; }
+    }
   </style>
 </head>
 
@@ -128,7 +131,8 @@
     const chat = document.getElementById('chat');
     const BACKEND_URL = "/submit";
 
-    // ---------------- DEEP DIVE QUESTION SET ---------------- //
+    // ---------------- DEEP DIVE QUESTION SET (Q7-Q30) ---------------- //
+    // This is Part 2 of the survey - questions are numbered Q7-Q30 intentionally
 
     const steps = [
       // Q07 — TEXTBOX: Where do you show up online right now — and how big is your audience there?
@@ -162,16 +166,16 @@
           "2️⃣ 2",
           "3️⃣ 3",
           "4️⃣ 4",
-          "5️⃣ 5 – I’ll do it if I have to",
+          "5️⃣ 5 – I'll do it if I have to",
           "6️⃣ 6",
           "7️⃣ 7",
           "8️⃣ 8",
           "9️⃣ 9",
-          "🔟 10 – I’m fully confident showing up"
+          "🔟 10 – I'm fully confident showing up"
         ]
       },
 
-      // ---- From here down, same structure as last file ----
+      // ---- Questions Q10-Q30 continue from here ----
 
       { type: "single", question: "Q10 — When you picture your ideal business life 2–3 years from now, what feels most important?", options: [
         "Time freedom with stable income",
@@ -194,10 +198,10 @@
         "I'm consistent and intentional with content"
       ]},
       { type: "single", question: "Q13 — When it comes to talking about products or opportunities online…", options: [
-        "I’m confident and comfortable",
-        "I’m willing but nervous",
+        "I'm confident and comfortable",
+        "I'm willing but nervous",
         "I mostly avoid it right now",
-        "Haven’t really tried yet"
+        "Haven't really tried yet"
       ]},
       { type: "single", question: "Q14 — How do you feel about learning new tech/tools?", options: [
         "Love it — I pick it up fast",
@@ -218,10 +222,10 @@
         "20+ hours"
       ]},
       { type: "single", question: "Q17 — What best describes your current financial starting point?", options: [
-        "I’m comfortable but want more options",
-        "I’m tight and need relief fast",
-        "I’m rebuilding from a setback",
-        "I’m stable and focused on growth"
+        "I'm comfortable but want more options",
+        "I'm tight and need relief fast",
+        "I'm rebuilding from a setback",
+        "I'm stable and focused on growth"
       ]},
       { type: "single", question: "Q18 — What feels MOST natural when it comes to connecting with people?", options: [
         "One-on-one conversations",
@@ -230,12 +234,12 @@
         "Creating content that people respond to"
       ]},
       { type: "single", question: "Q19 — Which statement feels most true about your confidence level?", options: [
-        "I’m confident — I just need a system",
-        "I’m confident in some areas, shaky in others",
+        "I'm confident — I just need a system",
+        "I'm confident in some areas, shaky in others",
         "My confidence is rebuilding",
-        "I’m not confident yet, but I’m willing"
+        "I'm not confident yet, but I'm willing"
       ]},
-      { type: "single", question: "Q20 — How do you respond when a plan doesn’t work the first time?", options: [
+      { type: "single", question: "Q20 — How do you respond when a plan doesn't work the first time?", options: [
         "I regroup and try again",
         "I need someone to walk through it with me",
         "I tend to shut down and avoid it",
@@ -252,9 +256,9 @@
         "A solid side income",
         "Replacing my current income",
         "Building a serious long-term business",
-        "I’m still feeling this out"
+        "I'm still feeling this out"
       ]},
-      { type: "single", question: "Q23 — If we built you a simple daily method of operation (DMO), what’s realistic for you right now?", options: [
+      { type: "single", question: "Q23 — If we built you a simple daily method of operation (DMO), what's realistic for you right now?", options: [
         "20–30 minutes per day",
         "30–60 minutes per day",
         "60–90 minutes per day",
@@ -279,20 +283,20 @@
         "Income movement",
         "Emotional / energy check-ins",
         "Visual charts / dashboards",
-        "Stories of people I’ve helped"
+        "Stories of people I've helped"
       ]},
-      { type: "text", question: "Q27 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what’s really true for you here..." },
+      { type: "text", question: "Q27 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what's really true for you here..." },
       { type: "text", question: "Q28 — What are the top 1–2 fears or hesitations you want your coach to know before you start?", placeholder: "Be honest. This helps us coach you better." },
       { type: "text", question: "Q29 — What strengths do you bring to the table that we can build on together?", placeholder: "Skills, experience, personality, anything that makes you an asset." },
       { type: "text", question: "Q30 — What does a WIN in the next 90 days look like for you?", placeholder: "Describe it in your own words." },
 
-      // Step 25 - Email
-      { type: "email", question: "And finally… what’s the BEST email for your custom 90-day Legacy Builder projection?" }
+      // Step 25 - Email (not counted in the 24 DD answers)
+      { type: "email", question: "And finally… what's the BEST email for your custom 90-day Legacy Builder projection?" }
     ];
 
-    const TOTAL_STEPS = steps.length; // 25
+    const TOTAL_STEPS = steps.length; // 25 (24 DD answers + email)
     let currentStep = -1;
-    let answers = [];
+    let answers = [];      // Will hold 24 Deep Dive answers (Q7-Q30)
     let userEmail = "";
 
     // ---------------- MESSAGE FUNCTIONS ---------------- //
@@ -334,16 +338,17 @@
         showBotMessage(label + step.question);
 
         if (step.type === "single" || step.type === "multi") {
-          let html = `<div class="options">`;
-          step.options.forEach((opt) => {
-            const safe = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            html += `<button onclick="handleOption('${step.type}', '${safe}', this)">${opt}</button>`;
+          // Create options container with data attributes
+          let html = `<div class="options" data-step="${currentStep}" data-type="${step.type}">`;
+          step.options.forEach((opt, idx) => {
+            // Use data attributes to store the option value - no escaping needed!
+            html += `<button class="option-btn" data-value="${btoa(encodeURIComponent(opt))}">${opt}</button>`;
           });
           html += `</div>`;
           chat.innerHTML += html;
 
           if (step.type === "multi") {
-            chat.innerHTML += `<button class="next-btn" onclick="finalizeMulti('${currentStep}')">Next</button>`;
+            chat.innerHTML += `<button class="next-btn" data-action="finalize-multi" data-step="${currentStep}">Next</button>`;
           }
         }
 
@@ -351,7 +356,7 @@
           chat.innerHTML += `
             <div id="text-block-${currentStep}">
               <textarea id="text-input-${currentStep}" placeholder="${step.placeholder || ''}"></textarea>
-              <button class="next-btn" onclick="saveText('${currentStep}')">Next</button>
+              <button class="next-btn" data-action="save-text" data-step="${currentStep}">Next</button>
             </div>
           `;
         }
@@ -360,7 +365,7 @@
           chat.innerHTML += `
             <div id="email-block">
               <input id="email-input" type="email" placeholder="Enter your email...">
-              <button class="submit-btn" onclick="saveEmail()">Submit</button>
+              <button class="submit-btn" data-action="save-email">Submit</button>
             </div>
           `;
         }
@@ -370,63 +375,120 @@
       }, 700);
     }
 
-    // ---------------- ANSWER CAPTURE ---------------- //
+    // ---------------- EVENT DELEGATION HANDLER ---------------- //
 
-    function handleOption(type, value, btn) {
-      if (type === "single") {
-        const container = btn.parentElement;
-        [...container.querySelectorAll("button")].forEach(b => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        showUserMessage(value);
-        answers.push(value);
-        container.remove();
-        const nextBtn = chat.querySelector(".next-btn");
-        if (nextBtn) nextBtn.remove();
-        setTimeout(renderStep, 300);
-      } else {
-        btn.classList.toggle("selected");
+    // Use a single event listener on the chat container for all clicks
+    chat.addEventListener('click', function(e) {
+      const target = e.target;
+      
+      // Handle option button clicks
+      if (target.classList.contains('option-btn')) {
+        const container = target.parentElement;
+        const type = container.dataset.type;
+        const encodedValue = target.dataset.value;
+        const value = decodeURIComponent(atob(encodedValue));
+        
+        if (type === 'single') {
+          // Single select - clear other selections
+          container.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+          target.classList.add('selected');
+          showUserMessage(value);
+          answers.push(value);
+          
+          // Remove options and any next button
+          container.remove();
+          const nextBtn = chat.querySelector('.next-btn');
+          if (nextBtn) nextBtn.remove();
+          
+          setTimeout(renderStep, 300);
+        } else if (type === 'multi') {
+          // Multi select - toggle selection
+          target.classList.toggle('selected');
+        }
       }
-    }
+      
+      // Handle Next button clicks
+      if (target.classList.contains('next-btn')) {
+        const action = target.dataset.action;
+        const stepIdx = parseInt(target.dataset.step);
+        
+        if (action === 'finalize-multi') {
+          finalizeMulti(stepIdx);
+        } else if (action === 'save-text') {
+          saveText(stepIdx);
+        }
+      }
+      
+      // Handle Submit button click
+      if (target.classList.contains('submit-btn')) {
+        if (target.dataset.action === 'save-email') {
+          saveEmail();
+        }
+      }
+    });
+
+    // ---------------- ANSWER CAPTURE FUNCTIONS ---------------- //
 
     function finalizeMulti(stepIndex) {
-      const container = chat.querySelector(".options:last-of-type");
-      const selected = [...container.querySelectorAll("button.selected")].map(btn => btn.textContent.trim());
+      const container = document.querySelector(`.options[data-step="${stepIndex}"]`);
+      if (!container) return;
+      
+      const selected = [...container.querySelectorAll('button.selected')].map(btn => {
+        const encodedValue = btn.dataset.value;
+        return decodeURIComponent(atob(encodedValue));
+      });
 
       if (selected.length === 0) {
         showBotMessage("Select at least one option before moving on.");
         return;
       }
-      showUserMessage(selected.join(", "));
-      answers.push(selected.join(", "));
+      
+      const summary = selected.join(", ");
+      showUserMessage(summary);
+      answers.push(summary);
+      
       container.remove();
-      const nb = chat.querySelector(".next-btn");
+      const nb = chat.querySelector('.next-btn');
       if (nb) nb.remove();
+      
       setTimeout(renderStep, 300);
     }
 
     function saveText(stepIndex) {
-      const val = document.getElementById(`text-input-${stepIndex}`).value.trim();
+      const input = document.getElementById(`text-input-${stepIndex}`);
+      if (!input) return;
+      
+      const val = input.value.trim();
       if (!val) {
-        showBotMessage("Go ahead — type your answer. It doesn’t have to be perfect.");
+        showBotMessage("Go ahead — type your answer. It doesn't have to be perfect.");
         return;
       }
+      
       showUserMessage(val);
       answers.push(val);
+      
       const blk = document.getElementById(`text-block-${stepIndex}`);
       if (blk) blk.remove();
+      
       setTimeout(renderStep, 300);
     }
 
     function saveEmail() {
-      const email = document.getElementById("email-input").value.trim();
+      const input = document.getElementById("email-input");
+      if (!input) return;
+      
+      const email = input.value.trim();
       if (!email) {
-        showBotMessage("I’ll need your email so your coach can prep your custom 90-day projection.");
+        showBotMessage("I'll need your email so your coach can prep your custom 90-day projection.");
         return;
       }
+      
       userEmail = email;
       showUserMessage(email);
+      
       const blk = document.getElementById("email-block");
       if (blk) blk.remove();
+      
       submitSurvey();
     }
 
@@ -435,6 +497,7 @@
     function submitSurvey() {
       showLoading();
 
+      // Ensure answers is an array (defensive programming)
       if (!Array.isArray(answers)) answers = [];
 
       fetch(BACKEND_URL, {
@@ -442,7 +505,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
-          answers: answers
+          answers: answers  // 24 answers for Q7-Q30
         })
       })
       .then(res => res.json())
@@ -464,14 +527,9 @@
     // ---------------- INIT ---------------- //
 
     window.onload = () => {
-      showBotMessage("Alright legend — I’m ANGUS™. This Deep Dive locks in the intel your coach will use to build your 90-day Legacy Builder projection with precision. Answer honestly — this is for YOU.");
+      showBotMessage("Alright legend — I'm ANGUS™. This Deep Dive locks in the intel your coach will use to build your 90-day Legacy Builder projection with precision. Answer honestly — this is for YOU.");
       setTimeout(renderStep, 1400);
     };
-
-    window.handleOption = handleOption;
-    window.finalizeMulti = finalizeMulti;
-    window.saveText = saveText;
-    window.saveEmail = saveEmail;
 
   </script>
 </body>

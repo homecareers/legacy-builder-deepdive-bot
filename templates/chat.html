@@ -1,288 +1,436 @@
-from flask import Flask, request, jsonify, render_template
-import requests
-import os
-import datetime
-import urllib.parse
-from flask_cors import CORS
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ANGUS™ — Legacy Builder Deep Dive</title>
+  <style>
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background: #050608;
+      color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .chat-box {
+      max-width: 780px;
+      margin: 30px auto;
+      background: #0f0f0f;
+      padding: 30px;
+      border-radius: 18px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.85);
+      border: 1px solid #222;
+    }
+    .message {
+      margin: 14px 0;
+      line-height: 1.6;
+      animation: fadeIn 0.45s ease-in;
+    }
+    .bot { color: #f5f5f5; }
+    .user {
+      color: #D4A72C;
+      text-align: right;
+      font-weight: 600;
+    }
+    .step-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #D4A72C;
+      margin-bottom: 4px;
+    }
+    .bot strong { color: #D4A72C; }
+    .options {
+      margin-top: 10px;
+    }
+    .options button {
+      display: block;
+      width: 100%;
+      padding: 10px 14px;
+      margin: 6px 0;
+      border-radius: 10px;
+      border: 1px solid #D4A72C;
+      background: #111;
+      color: #f5f5f5;
+      text-align: left;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.2s ease;
+    }
+    .options button:hover {
+      background: #D4A72C;
+      color: #050608;
+      transform: translateY(-2px);
+      box-shadow: 0 0 18px rgba(212,167,44,0.45);
+    }
+    .options button.selected {
+      background: #D4A72C;
+      color: #050608;
+      box-shadow: 0 0 18px rgba(212,167,44,0.45);
+    }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 10px;
+      background: #111;
+      border: 2px solid #333;
+      color: #f5f5f5;
+      font-size: 15px;
+      box-sizing: border-box;
+      font-family: 'Inter', Arial, sans-serif;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #D4A72C;
+      box-shadow: 0 0 10px rgba(212,167,44,0.35);
+    }
+    .next-btn, .submit-btn {
+      background: #D4A72C;
+      color: #050608;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      margin-top: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .next-btn:hover, .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 18px rgba(212,167,44,0.45);
+    }
+    .loading {
+      color: #D4A72C;
+      font-style: italic;
+    }
+    .loading::after {
+      content: "...";
+      animation: dots 1.5s infinite;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes dots {
+      0%   { content: ""; }
+      33%  { content: "."; }
+      66%  { content: ".."; }
+      100% { content: "..."; }
+    }
+  </style>
+</head>
 
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+<body>
+  <div class="chat-box" id="chat"></div>
 
-# ---------------------- CONFIG ---------------------- #
+  <script>
+    const chat = document.getElementById('chat');
+    const BACKEND_URL = "/submit";
 
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
+    // ---------------- DEEP DIVE QUESTION SET ---------------- //
 
-HQ_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Prospects"
-USERS_TABLE = os.getenv("AIRTABLE_USERS_TABLE") or "Users"
-DEEPDIVE_TABLE = os.getenv("AIRTABLE_DEEPDIVE_TABLE") or "Deep Dive Responses"
+    const steps = [
+      { type: "single", question: "Q7 — When you picture your ideal business life 2–3 years from now, what feels most important?", options: [
+        "Time freedom with stable income",
+        "Scaling meaningful impact",
+        "Building a team + community",
+        "Replacing or exceeding my current income",
+        "Proving to myself I can actually do it"
+      ]},
+      { type: "single", question: "Q8 — Right now, where do you mostly show up online?", options: [
+        "Facebook",
+        "Instagram",
+        "TikTok",
+        "YouTube",
+        "Other / I barely show up"
+      ]},
+      { type: "single", question: "Q9 — How would you describe your current consistency with posting or creating content?", options: [
+        "I rarely post",
+        "I post sometimes but not consistently",
+        "I'm consistent but not business-focused yet",
+        "I'm consistent and intentional with content"
+      ]},
+      { type: "single", question: "Q10 — When it comes to talking about products or opportunities online…", options: [
+        "I’m confident and comfortable",
+        "I’m willing but nervous",
+        "I mostly avoid it right now",
+        "Haven’t really tried yet"
+      ]},
+      { type: "single", question: "Q11 — How do you feel about learning new tech/tools?", options: [
+        "Love it — I pick it up fast",
+        "I can learn it with clear steps",
+        "I get overwhelmed easily",
+        "I'd rather keep it super simple"
+      ]},
+      { type: "single", question: "Q12 — How do you prefer to be coached?", options: [
+        "Direct and straightforward",
+        "Encouraging and supportive",
+        "Step-by-step with examples",
+        "Give me the target and let me run"
+      ]},
+      { type: "single", question: "Q13 — In a perfect world, how many hours per week would you eventually like to be investing into your business?", options: [
+        "5–10 hours",
+        "10–15 hours",
+        "15–20 hours",
+        "20+ hours"
+      ]},
+      { type: "single", question: "Q14 — What best describes your current financial starting point?", options: [
+        "I’m comfortable but want more options",
+        "I’m tight and need relief fast",
+        "I’m rebuilding from a setback",
+        "I’m stable and focused on growth"
+      ]},
+      { type: "single", question: "Q15 — What feels MOST natural when it comes to connecting with people?", options: [
+        "One-on-one conversations",
+        "Small group settings",
+        "Online messages / DM chats",
+        "Creating content that people respond to"
+      ]},
+      { type: "single", question: "Q16 — Which statement feels most true about your confidence level?", options: [
+        "I’m confident — I just need a system",
+        "I’m confident in some areas, shaky in others",
+        "My confidence is rebuilding",
+        "I’m not confident yet, but I’m willing"
+      ]},
+      { type: "single", question: "Q17 — How do you respond when a plan doesn’t work the first time?", options: [
+        "I regroup and try again",
+        "I need someone to walk through it with me",
+        "I tend to shut down and avoid it",
+        "I overthink what went wrong"
+      ]},
+      { type: "multi", question: "Q18 — What kind of support will help you actually follow through? (Select all that apply.)", options: [
+        "Clear weekly targets",
+        "Accountability check-ins",
+        "Community / team energy",
+        "Simple scripts and language",
+        "Visual trackers or dashboards"
+      ]},
+      { type: "single", question: "Q19 — When you think about earning with this, what feels most aligned?", options: [
+        "A solid side income",
+        "Replacing my current income",
+        "Building a serious long-term business",
+        "I’m still feeling this out"
+      ]},
+      { type: "single", question: "Q20 — If we built you a simple daily method of operation (DMO), what’s realistic for you right now?", options: [
+        "20–30 minutes per day",
+        "30–60 minutes per day",
+        "60–90 minutes per day",
+        "More than 90 minutes per day"
+      ]},
+      { type: "single", question: "Q21 — Which GEM style do you FEEL you resonate with most?", options: [
+        "Pearl — heart, connection, service",
+        "Ruby — recognition, fun, energy",
+        "Sapphire — structure, systems, clarity",
+        "Emerald — goals, numbers, wealth-building",
+        "Not sure yet"
+      ]},
+      { type: "multi", question: "Q22 — What usually pulls you OFF track when you set big goals? (Select all that apply.)", options: [
+        "Life chaos and distractions",
+        "No clear plan or structure",
+        "Lack of encouragement or community",
+        "Fear of judgment or failure",
+        "Time management / overwhelm"
+      ]},
+      { type: "multi", question: "Q23 — How do you prefer to track progress? (Select all that apply.)", options: [
+        "Daily check marks",
+        "Income movement",
+        "Emotional / energy check-ins",
+        "Visual charts / dashboards",
+        "Stories of people I’ve helped"
+      ]},
+      { type: "text", question: "Q24 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what’s really true for you here..." },
+      { type: "text", question: "Q25 — What are the top 1–2 fears or hesitations you want your coach to know before you start?", placeholder: "Be honest. This helps us coach you better." },
+      { type: "text", question: "Q26 — What strengths do you bring to the table that we can build on together?", placeholder: "Skills, experience, personality, anything that makes you an asset." },
+      { type: "text", question: "Q27 — What does a WIN in the next 90 days look like for you?", placeholder: "Describe it in your own words." },
+      { type: "text", question: "Q28 — Is there anything from your past business or work experience that we should *not* repeat this time?", placeholder: "Patterns, approaches, or situations you’re done with." },
+      { type: "text", question: "Q29 — How do you want your coach to show up for you when you’re struggling?", placeholder: "Direct tough love, gentle encouragement, structured action steps, etc." },
+      { type: "text", question: "Q30 — Anything else you want us to know about your vision, life season, or expectations?", placeholder: "Optional, but powerful if you share it." },
 
-GHL_API_KEY = os.getenv("GHL_API_KEY")
-GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID")
-GHL_BASE_URL = "https://rest.gohighlevel.com/v1"
+      // Step 25 - Email
+      { type: "email", question: "And finally… what’s the BEST email for your custom 90-day Legacy Builder projection?" }
+    ];
 
-DEEPDIVE_REDIRECT_URL = (
-    os.getenv("DEEPDIVE_REDIRECT_URL")
-    or os.getenv("NEXTSTEP_URL")
-    or "https://poweredbylegacycode.com/nextstep"
-)
+    const TOTAL_STEPS = steps.length; // 25
+    let currentStep = -1;
+    let answers = [];
+    let userEmail = "";
 
-DEEPDIVE_QUESTION_COUNT = int(os.getenv("DEEPDIVE_QUESTION_COUNT", "24"))
+    // ---------------- MESSAGE FUNCTIONS ---------------- //
 
-
-# ---------------------- AIRTABLE HELPERS ---------------------- #
-
-def _h():
-    return {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Content-Type": "application/json",
+    function showBotMessage(msg) {
+      chat.innerHTML += `<div class="message bot">${msg}</div>`;
+      chat.scrollTop = chat.scrollHeight;
     }
 
-def _url(table, rec_id=None, params=None):
-    base = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(table)}"
-    if rec_id:
-        return f"{base}/{rec_id}"
-    if params:
-        return f"{base}?{urllib.parse.urlencode(params)}"
-    return base
-
-
-# ---------------------- OPERATOR LOOKUP ---------------------- #
-
-def get_operator_info(ghl_user_id: str):
-    try:
-        formula = f"{{GHL User ID}} = '{ghl_user_id}'"
-        search_url = _url(
-            USERS_TABLE,
-            params={"filterByFormula": formula, "maxRecords": 1}
-        )
-        r = requests.get(search_url, headers=_h())
-        r.raise_for_status()
-        data = r.json()
-
-        if data.get("records"):
-            user_record = data["records"][0]
-            fields = user_record.get("fields", {})
-            op_legacy_code = fields.get("Legacy Code")
-            op_email = fields.get("Email")
-            return op_legacy_code, op_email
-
-    except Exception as e:
-        print(f"Error looking up operator info: {e}")
-
-    return None, None
-
-
-def update_prospect_with_operator_info(prospect_id: str, ghl_user_id: str):
-    try:
-        update_fields = {"GHL User ID": ghl_user_id}
-
-        op_legacy_code, op_email = get_operator_info(ghl_user_id)
-        if op_legacy_code:
-            update_fields["Assigned Op Legacy Code"] = op_legacy_code
-        if op_email:
-            update_fields["Assigned Op Email"] = op_email
-
-        requests.patch(
-            _url(HQ_TABLE, prospect_id),
-            headers=_h(),
-            json={"fields": update_fields},
-        )
-
-    except Exception as e:
-        print(f"Error updating prospect with operator info: {e}")
-
-
-# ---------------------- PROSPECT HANDLING ---------------------- #
-
-def get_or_create_prospect(email: str):
-
-    formula = f"{{Prospect Email}} = '{email}'"
-    search_url = _url(HQ_TABLE, params={"filterByFormula": formula, "maxRecords": 1})
-    r = requests.get(search_url, headers=_h())
-    r.raise_for_status()
-    data = r.json()
-
-    if data.get("records"):
-        rec = data["records"][0]
-        rec_id = rec["id"]
-        fields = rec.get("fields", {})
-        legacy_code = fields.get("Legacy Code")
-
-        if not legacy_code:
-            auto = fields.get("AutoNum")
-            if auto is None:
-                r2 = requests.get(_url(HQ_TABLE, rec_id), headers=_h())
-                auto = r2.json().get("fields", {}).get("AutoNum")
-
-            legacy_code = f"Legacy-X25-OP{1000 + int(auto)}"
-            requests.patch(
-                _url(HQ_TABLE, rec_id),
-                headers=_h(),
-                json={"fields": {"Legacy Code": legacy_code}},
-            )
-
-        return legacy_code, rec_id
-
-    payload = {"fields": {"Prospect Email": email}}
-    r = requests.post(_url(HQ_TABLE), headers=_h(), json=payload)
-    r.raise_for_status()
-    rec = r.json()
-    rec_id = rec["id"]
-
-    auto = rec.get("fields", {}).get("AutoNum")
-    if auto is None:
-        r2 = requests.get(_url(HQ_TABLE, rec_id), headers=_h())
-        auto = r2.json().get("fields", {}).get("AutoNum")
-
-    legacy_code = f"Legacy-X25-OP{1000 + int(auto)}"
-    requests.patch(
-        _url(HQ_TABLE, rec_id),
-        headers=_h(),
-        json={"fields": {"Legacy Code": legacy_code}},
-    )
-
-    return legacy_code, rec_id
-
-
-# ---------------------- SAVE DEEP DIVE ---------------------- #
-
-def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list):
-
-    fields = {
-        "Legacy Code": legacy_code,
-        "Prospects": [prospect_id],
-        "Date Submitted": datetime.datetime.utcnow().isoformat(),
+    function showUserMessage(msg) {
+      chat.innerHTML += `<div class="message user">${msg}</div>`;
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    for idx, ans in enumerate(answers):
-        key = f"DD_Q{str(idx + 1).zfill(2)}"
-        fields[key] = ans
+    function showLoading() {
+      chat.innerHTML += `<div class="message loading" id="loading">ANGUS is thinking</div>`;
+      chat.scrollTop = chat.scrollHeight;
+    }
 
-    r = requests.post(_url(DEEPDIVE_TABLE), headers=_h(), json={"fields": fields})
-    r.raise_for_status()
-    return r.json().get("id")
+    function hideLoading() {
+      const l = document.getElementById("loading");
+      if (l) l.remove();
+    }
 
+    // ---------------- RENDER STEPS ---------------- //
 
-# ---------------------- GHL SYNC ---------------------- #
+    function renderStep() {
+      currentStep++;
 
-def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
-    try:
+      if (currentStep >= TOTAL_STEPS) return;
 
-        headers = {
-            "Authorization": f"Bearer {GHL_API_KEY}",
-            "Content-Type": "application/json",
+      const step = steps[currentStep];
+
+      showLoading();
+      setTimeout(() => {
+        hideLoading();
+
+        const label = `<div class="step-label">Step ${currentStep + 1} of ${TOTAL_STEPS}</div>`;
+        showBotMessage(label + step.question);
+
+        if (step.type === "single" || step.type === "multi") {
+          let html = `<div class="options">`;
+          step.options.forEach((opt, idx) => {
+            const safe = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            html += `<button onclick="handleOption('${step.type}', '${safe}', this)">${opt}</button>`;
+          });
+          html += `</div>`;
+          chat.innerHTML += html;
+
+          if (step.type === "multi") {
+            chat.innerHTML += `<button class="next-btn" onclick="finalizeMulti('${currentStep}')">Next</button>`;
+          }
         }
 
-        lookup = requests.get(
-            f"{GHL_BASE_URL}/contacts/lookup",
-            headers=headers,
-            params={"email": email, "locationId": GHL_LOCATION_ID},
-        ).json()
+        if (step.type === "text") {
+          chat.innerHTML += `
+            <div id="text-block-${currentStep}">
+              <textarea id="text-input-${currentStep}" placeholder="${step.placeholder}"></textarea>
+              <button class="next-btn" onclick="saveText('${currentStep}')">Next</button>
+            </div>
+          `;
+        }
 
-        contact = None
-        if "contacts" in lookup and lookup["contacts"]:
-            contact = lookup["contacts"][0]
-        elif "contact" in lookup:
-            contact = lookup["contact"]
+        if (step.type === "email") {
+          chat.innerHTML += `
+            <div id="email-block">
+              <input id="email-input" type="email" placeholder="Enter your email...">
+              <button class="submit-btn" onclick="saveEmail()">Submit</button>
+            </div>
+          `;
+        }
 
-        if not contact:
-            print(f"No GHL contact found for email: {email}")
-            return None
+        chat.scrollTop = chat.scrollHeight;
 
-        ghl_id = contact.get("id")
-        assigned = (
-            contact.get("assignedUserId")
-            or contact.get("userId")
-            or contact.get("assignedTo")
-        )
+      }, 700);
+    }
 
-        requests.put(
-            f"{GHL_BASE_URL}/contacts/{ghl_id}",
-            headers=headers,
-            json={"tags": ["legacy deep dive submitted"]},
-        )
+    // ---------------- ANSWER CAPTURE ---------------- //
 
-        for idx, ans in enumerate(answers):
-            field_name = f"dd_q{str(idx + 1).zfill(2)}"
-            requests.put(
-                f"{GHL_BASE_URL}/contacts/{ghl_id}",
-                headers=headers,
-                json={"customField": {field_name: ans}},
-            )
+    function handleOption(type, value, btn) {
+      if (type === "single") {
+        const container = btn.parentElement;
+        [...container.querySelectorAll("button")].forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        showUserMessage(value);
+        answers.push(value);
+        container.remove();
+        const nextBtn = chat.querySelector(".next-btn");
+        if (nextBtn) nextBtn.remove();
+        setTimeout(renderStep, 300);
+      } else {
+        btn.classList.toggle("selected");
+      }
+    }
 
-        requests.put(
-            f"{GHL_BASE_URL}/contacts/{ghl_id}",
-            headers=headers,
-            json={"customField": {"legacy_code_id": legacy_code}},
-        )
+    function finalizeMulti(stepIndex) {
+      const container = chat.querySelector(".options:last-of-type");
+      const selected = [...container.querySelectorAll("button.selected")].map(btn => btn.textContent.trim());
 
-        requests.put(
-            f"{GHL_BASE_URL}/contacts/{ghl_id}",
-            headers=headers,
-            json={"customField": {"atrid": prospect_id}},
-        )
+      if (selected.length === 0) {
+        showBotMessage("Select at least one option before moving on.");
+        return;
+      }
+      showUserMessage(selected.join(", "));
+      answers.push(selected.join(", "));
+      container.remove();
+      chat.querySelector(".next-btn").remove();
+      setTimeout(renderStep, 300);
+    }
 
-        if assigned:
-            update_prospect_with_operator_info(prospect_id, assigned)
+    function saveText(stepIndex) {
+      const val = document.getElementById(`text-input-${stepIndex}`).value.trim();
+      if (!val) {
+        showBotMessage("Go ahead — type your answer. It doesn’t have to be perfect.");
+        return;
+      }
+      showUserMessage(val);
+      answers.push(val);
+      document.getElementById(`text-block-${stepIndex}`).remove();
+      setTimeout(renderStep, 300);
+    }
 
-        return assigned
+    function saveEmail() {
+      const email = document.getElementById("email-input").value.trim();
+      if (!email) {
+        showBotMessage("I’ll need your email so your coach can prep your custom 90-day projection.");
+        return;
+      }
+      userEmail = email;
+      showUserMessage(email);
+      document.getElementById("email-block").remove();
+      submitSurvey();
+    }
 
-    except Exception as e:
-        print(f"GHL Deep Dive Sync Error: {e}")
-        return None
+    // ---------------- SUBMIT SURVEY (THE CRITICAL FIX) ---------------- //
 
+    function submitSurvey() {
+      showLoading();
 
-# ---------------------- ROUTES ---------------------- #
+      if (!Array.isArray(answers)) answers = [];
 
-@app.route("/")
-def index():
-    return render_template("chat.html")
+      fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          answers: answers
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        hideLoading();
+        if (data.redirect_url) {
+          window.top.location.href = data.redirect_url;
+        } else {
+          showBotMessage("Something glitched. Refresh and try again.");
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        hideLoading();
+        showBotMessage("Server issue. Refresh and try again.");
+      });
+    }
 
+    // ---------------- INIT ---------------- //
 
-@app.route("/submit", methods=["POST"])
-def submit():
-    try:
+    window.onload = () => {
+      showBotMessage("Alright legend — I’m ANGUS™. This Deep Dive locks in the intel your coach will use to build your 90-day Legacy Builder projection with precision.");
+      setTimeout(renderStep, 1400);
+    };
 
-        data = request.json or {}
-        email = (data.get("email") or "").trim() if isinstance(data.get("email"), str) else (data.get("email") or "")
-        answers = data.get("answers")
+    window.handleOption = handleOption;
+    window.finalizeMulti = finalizeMulti;
+    window.saveText = saveText;
+    window.saveEmail = saveEmail;
 
-        if not isinstance(answers, list):
-            answers = []
-
-        while len(answers) < DEEPDIVE_QUESTION_COUNT:
-            answers.append("No response")
-
-        answers = answers[:DEEPDIVE_QUESTION_COUNT]
-        # ----------------------
-
-        legacy_code, prospect_id = get_or_create_prospect(email)
-        save_deepdive_to_airtable(legacy_code, prospect_id, answers)
-        assigned_user_id = push_deepdive_to_ghl(
-            email=email,
-            answers=answers,
-            legacy_code=legacy_code,
-            prospect_id=prospect_id
-        )
-
-        if assigned_user_id:
-            redirect_url = f"{DEEPDIVE_REDIRECT_URL}?uid={assigned_user_id}"
-        else:
-            redirect_url = DEEPDIVE_REDIRECT_URL
-
-        return jsonify({"redirect_url": redirect_url})
-
-    except Exception as e:
-        print(f"Deep Dive Submit Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/health")
-def health():
-    return jsonify({"status": "healthy"})
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+  </script>
+</body>
+</html>

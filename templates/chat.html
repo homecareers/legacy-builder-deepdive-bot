@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ANGUS™ Legacy Builder Plan — Deep Dive</title>
+  <title>ANGUS™ — Legacy Builder Deep Dive</title>
   <style>
     body {
       font-family: 'Inter', Arial, sans-serif;
@@ -11,805 +11,435 @@
       padding: 20px;
       min-height: 100vh;
     }
-
     .chat-box {
-      max-width: 680px;
-      margin: 40px auto;
+      max-width: 780px;
+      margin: 30px auto;
       background: #0f0f0f;
       padding: 30px;
       border-radius: 18px;
       box-shadow: 0 24px 60px rgba(0,0,0,0.85);
       border: 1px solid #222;
     }
-
     .message {
-      margin: 16px 0;
+      margin: 14px 0;
       line-height: 1.6;
-      animation: fadeIn 0.4s ease-in;
-      white-space: pre-wrap;
+      animation: fadeIn 0.45s ease-in;
     }
-
     .bot { color: #f5f5f5; }
     .user {
       color: #D4A72C;
       text-align: right;
-      font-weight: 500;
-      white-space: pre-wrap;
+      font-weight: 600;
+    }
+    .step-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #D4A72C;
+      margin-bottom: 4px;
     }
     .bot strong { color: #D4A72C; }
-
-    .options { margin: 20px 0; }
-
+    .options {
+      margin-top: 10px;
+    }
     .options button {
       display: block;
-      margin: 8px 0;
       width: 100%;
-      padding: 12px 16px;
+      padding: 10px 14px;
+      margin: 6px 0;
       border-radius: 10px;
       border: 1px solid #D4A72C;
-      background: #111111;
+      background: #111;
       color: #f5f5f5;
+      text-align: left;
       cursor: pointer;
       font-size: 15px;
-      transition: all 0.22s ease;
-      text-align: left;
-      letter-spacing: 0.2px;
-      position: relative;
+      transition: all 0.2s ease;
     }
-
     .options button:hover {
       background: #D4A72C;
       color: #050608;
-      transform: translateY(-1px);
+      transform: translateY(-2px);
       box-shadow: 0 0 18px rgba(212,167,44,0.45);
     }
-
     .options button.selected {
-      background: rgba(212,167,44,0.15);
-      border-color: #D4A72C;
-      box-shadow: inset 0 0 0 1px #D4A72C;
+      background: #D4A72C;
+      color: #050608;
+      box-shadow: 0 0 18px rgba(212,167,44,0.45);
     }
-    .options button.selected::after {
-      content: "✓";
-      position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #D4A72C;
-      font-weight: 800;
-    }
-
-    .input-wrap {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    .input-wrap input, .input-wrap textarea {
-      flex: 1;
+    input, textarea {
+      width: 100%;
       padding: 12px;
+      margin-top: 10px;
       border-radius: 10px;
-      border: 2px solid #333;
       background: #111;
+      border: 2px solid #333;
       color: #f5f5f5;
       font-size: 15px;
       box-sizing: border-box;
       font-family: 'Inter', Arial, sans-serif;
     }
-
-    .input-wrap textarea {
-      min-height: 110px;
-      resize: vertical;
-    }
-
-    .input-wrap input:focus, .input-wrap textarea:focus {
+    textarea { min-height: 90px; resize: vertical; }
+    input:focus, textarea:focus {
       outline: none;
       border-color: #D4A72C;
       box-shadow: 0 0 10px rgba(212,167,44,0.35);
     }
-
-    .next-btn {
-      padding: 0 18px;
-      border-radius: 10px;
-      border: none;
+    .next-btn, .submit-btn {
       background: #D4A72C;
       color: #050608;
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.18s ease;
-    }
-
-    .next-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 0 14px rgba(212,167,44,0.55);
-    }
-
-    .inline-other {
-      margin-top: 12px;
-      padding: 12px;
-      border: 1px dashed #444;
+      padding: 10px 20px;
+      border: none;
       border-radius: 10px;
-      background: #0c0c0c;
+      margin-top: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: all 0.2s ease;
     }
-
-    .inline-other label {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 8px;
-      color: #ccc;
+    .next-btn:hover, .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 18px rgba(212,167,44,0.45);
     }
-
-    .help {
-      font-size: 12px;
-      opacity: 0.8;
-      margin-top: 6px;
-    }
-
     .loading {
       color: #D4A72C;
       font-style: italic;
     }
-
     .loading::after {
       content: "...";
       animation: dots 1.5s infinite;
     }
-
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-
     @keyframes dots {
-      0% { content: ""; }
-      33% { content: "."; }
-      66% { content: ".."; }
+      0%   { content: ""; }
+      33%  { content: "."; }
+      66%  { content: ".."; }
       100% { content: "..."; }
     }
-
-    @media (max-width: 600px) {
-      .chat-box { margin: 20px auto; padding: 20px; }
-      .input-wrap { flex-direction: column; }
-      .next-btn { width: 100%; padding: 10px 0; }
+    @media(max-width: 600px) {
+      .chat-box { padding: 20px; margin: 10px auto; }
     }
   </style>
 </head>
-
 <body>
-<div class="chat-box" id="chat"></div>
+  <div class="chat-box" id="chat"></div>
 
-<script>
-  const chat = document.getElementById('chat');
-  const BACKEND_URL = "/submit";
+  <script>
+    const chat = document.getElementById('chat');
+    const BACKEND_URL = "/submit";  // relative → uses same domain/app
 
-  // ---------------------- QUESTIONS ---------------------- //
-  const surveyFlow = [
-    {
-      id: "q7_social_audience",
-      type: "text",
-      question:
-        "Where do you show up online right now — and how big is your audience there?",
-      placeholder:
-        "Example: TikTok ~300, Instagram ~1,200, Facebook personal page only, etc."
-    },
-    {
-      id: "q8_social_presence",
-      type: "single",
-      question: "What does your current social media presence look like?",
-      options: [
-        "🧍‍♂️ I barely post — mostly invisible online",
-        "📅 I post sometimes, but not consistently",
-        "🔁 I post consistently but not business-focused yet",
-        "👀 Small audience, light engagement",
-        "🔥 Engaged community — people respond to me",
-        "🎥 I create content regularly (stories, reels, videos)",
-        "👻 I mostly consume — not a creator yet"
-      ]
-    },
-    {
-      id: "q9_content_confidence",
-      type: "single",
-      question: "How confident are you creating simple content?",
-      options: [
-        "1️⃣  1 – I freeze up. Zero confidence.",
-        "2️⃣  2",
-        "3️⃣  3",
-        "4️⃣  4",
-        "5️⃣  5 – I could try with help.",
-        "6️⃣  6",
-        "7️⃣  7",
-        "8️⃣  8 – I'm comfortable.",
-        "9️⃣  9",
-        "🔟  10 – Give me the plan."
-      ]
-    },
-    {
-      id: "q10_success_definition",
-      type: "text",
-      question:
-        "If we were sitting here 90 days from now and you told me “This WORKED,” what would have happened?",
-      placeholder:
-        "Paint the picture. What would feel like a win 90 days from now?"
-    },
-    {
-      id: "q11_primary_outcome",
-      type: "single",
-      question:
-        "What’s the #1 outcome you want from building this — income, freedom, confidence, energy, or something else?",
-      options: [
-        "💰 More income",
-        "🕊 More freedom",
-        "💪 More confidence",
-        "⚡️ More energy",
-        "📅 More structure",
-        "🎯 More purpose",
-        "🤝 More community",
-        "✍️ Something else (type in)"
-      ],
-      otherValue: "✍️ Something else (type in)"
-    },
-    {
-      id: "q12_outcome_reason",
-      type: "text",
-      question:
-        "And why does that outcome matter to you personally?",
-      placeholder:
-        "Why this outcome, and why now? Give me one honest line."
-    },
-    {
-      id: "q13_weekly_schedule",
-      type: "text",
-      question:
-        "What does your weekly schedule actually look like right now?",
-      placeholder:
-        "Example: 9–5 job, kids’ activities, evenings open, weekends busy, etc."
-    },
-    {
-      id: "q14_energy_windows",
-      type: "multi",
-      question:
-        "What times of day do you usually have the MOST focus or energy?",
-      help: "Select all that apply. If you tap “Other,” a box opens instantly. Then hit Next.",
-      options: [
-        "🌅 Early morning (5–8am)",
-        "🌞 Mid-morning (8–11am)",
-        "🍱 Afternoon (11am–3pm)",
-        "🌇 Late afternoon (3–6pm)",
-        "🌙 Evening (6–9pm)",
-        "🌌 Late night (9pm+)",
-        "🔄 It varies",
-        "⚡️ Depends on my work/kids schedule"
-      ]
-    },
-    {
-      id: "q15_commitments",
-      type: "text",
-      question:
-        "Do you have any current commitments we need to build around?",
-      placeholder:
-        "Work hours, kids, caregiving, travel, church, sports, etc."
-    },
-    {
-      id: "q16_consistency_drivers",
-      type: "multi",
-      question:
-        "When you’ve pursued goals in the past… what helped you stay consistent?",
-      help: "Select all that apply. If you tap “Other,” a box opens instantly. Then hit Next.",
-      options: [
-        "🗺 Clear steps",
-        "📊 Tracking progress",
-        "🙋‍♀️ Accountability",
-        "👥 Community support",
-        "📆 Routine + structure",
-        "🧠 Strong “why”",
-        "⏱ Deadlines",
-        "🔥 Momentum",
-        "✍️ Other (type in)"
-      ],
-      otherValue: "✍️ Other (type in)"
-    },
-    {
-      id: "q17_derailers",
-      type: "multi",
-      question:
-        "What usually pulls you off track when you’re chasing a big goal?",
-      help: "Select all that apply. If you tap “Other,” a box opens instantly. Then hit Next.",
-      options: [
-        "🧱 Lack of structure",
-        "🌀 Overthinking",
-        "🌪 Life chaos",
-        "😬 Doubting myself",
-        "🔇 Losing momentum",
-        "🎭 Trying to do it alone",
-        "⏰ Too many responsibilities",
-        "💭 Not seeing results fast enough",
-        "✍️ Other (type in)"
-      ],
-      otherValue: "✍️ Other (type in)"
-    },
-    {
-      id: "q18_stress_response",
-      type: "single",
-      question:
-        "When you get stressed or discouraged, how do you usually react?",
-      options: [
-        "📴 I shut down",
-        "🐢 I slow way down",
-        "🧗‍♂️ I push harder",
-        "🙈 I avoid tasks",
-        "🤯 I get overwhelmed",
-        "🙋‍♂️ I ask for help",
-        "🔄 It depends"
-      ]
-    },
-    {
-      id: "q19_strengths",
-      type: "multi",
-      question:
-        "Which strengths do you already bring to the table?",
-      help: "Select all that apply. If you tap “Other,” a box opens instantly. Then hit Next.",
-      options: [
-        "🗣 Talking to people",
-        "💬 Encouraging others",
-        "📱 Social posting",
-        "🎨 Creativity",
-        "🧹 Organization",
-        "🔁 Consistency",
-        "🎓 Learning quickly",
-        "📝 Following a plan",
-        "🔊 Storytelling",
-        "🌱 Leadership potential",
-        "✍️ Other"
-      ],
-      otherValue: "✍️ Other"
-    },
-    {
-      id: "q20_skill_focus",
-      type: "single",
-      question:
-        "Which skill do you want the MOST help developing?",
-      options: [
-        "🗣 Talking to people confidently",
-        "✍️ Posting content consistently",
-        "🤝 Starting conversations",
-        "🔁 Following a daily system",
-        "⏱ Time management",
-        "🔥 Building habit momentum",
-        "🎯 Staying accountable",
-        "🧩 Understanding the business flow",
-        "✨ Something else (type in)"
-      ],
-      otherValue: "✨ Something else (type in)"
-    },
-    {
-      id: "q21_system_confidence",
-      type: "single",
-      question:
-        "How confident are you in your ability to follow a simple daily system?",
-      options: [
-        "1️⃣  1 – I doubt I’ll stick with it.",
-        "2️⃣  2",
-        "3️⃣  3",
-        "4️⃣  4",
-        "5️⃣  5 – I’ll try if it’s simple.",
-        "6️⃣  6",
-        "7️⃣  7",
-        "8️⃣  8 – I’m solid with a good plan.",
-        "9️⃣  9",
-        "🔟  10 – If we build it, I’ll run it."
-      ]
-    },
-    {
-      id: "q22_income_impact",
-      type: "text",
-      question:
-        "What would earning an extra $300–$800/month change for you right now?",
-      placeholder:
-        "Example: cover a bill, debt relief, breathing room, savings, kids’ activities, etc."
-    },
-    {
-      id: "q23_biggest_fear",
-      type: "text",
-      question:
-        "What’s the biggest fear or hesitation you have about starting something new?",
-      placeholder:
-        "Be honest. This helps me coach you, not judge you."
-    },
-    {
-      id: "q24_six_months_worry",
-      type: "text",
-      question:
-        "If nothing changes in your life over the next 6 months… what worries you most?",
-      placeholder:
-        "What would bother you if everything stayed exactly the same?"
-    },
-    {
-      id: "q25_future_self",
-      type: "text",
-      question:
-        "Who do you want to become in the next 12 months?",
-      placeholder:
-        "Describe your future self — habits, energy, confidence, leadership, life."
-    },
-    {
-      id: "q26_never_feel",
-      type: "single",
-      question:
-        "What’s one thing you NEVER want to feel again?",
-      options: [
-        "😞 Feeling stuck",
-        "😰 Anxiety",
-        "😤 Overwhelm",
-        "😔 Insecurity",
-        "😩 Exhaustion",
-        "🥱 Burnout",
-        "🧍‍♂️ Feeling alone",
-        "✍️ Other (type in)"
-      ],
-      otherValue: "✍️ Other (type in)"
-    },
-    {
-      id: "q27_daily_feeling",
-      type: "single",
-      question:
-        "And what’s one feeling you WANT to experience every day?",
-      options: [
-        "💪 Confidence",
-        "✨ Clarity",
-        "🔋 Energy",
-        "🌼 Peace",
-        "🚀 Momentum",
-        "🎯 Purpose",
-        "😄 Joy",
-        "🔥 Drive"
-      ]
-    },
-    {
-      id: "q28_accountability_style",
-      type: "single",
-      question:
-        "How do you want me to hold you accountable?",
-      options: [
-        "🤝 Gentle encouragement",
-        "🔥 Direct challenge",
-        "🧭 Step-by-step guidance",
-        "🧘 Light-touch check-ins",
-        "👯 Partnership/teamwork",
-        "🎯 Hybrid approach"
-      ]
-    },
-    {
-      id: "q29_tracking_style",
-      type: "multi",
-      question:
-        "How do you prefer to track progress?",
-      help: "Select all that apply. Then hit Next.",
-      options: [
-        "☑️ Daily check marks",
-        "🏆 Weekly wins",
-        "🔋 Energy levels",
-        "💛 Confidence levels",
-        "💵 Income movement",
-        "🧬 Habit improvements",
-        "💬 Emotional check-ins"
-      ]
-    },
-    {
-      id: "q30_why_now",
-      type: "text",
-      question:
-        "And finally… why is NOW the right time for you to build something?",
-      placeholder:
-        "This is your line in the sand. One honest sentence."
-    },
-    {
-      id: "q14_best_email",
-      type: "email",
-      question:
-        "And what's the best email for your custom Legacy Builder plan to land in? Use the same one you used to download your Real Brick Road™ booklet.",
-      placeholder: "Best email for your plan."
-    }
-  ];
+    // 24 answer steps (you can tweak question text without touching logic)
+    const steps = [
+      { type: "single", question: "Q7 — When you picture your ideal business life 2–3 years from now, what feels most important?", options: [
+        "Time freedom with stable income",
+        "Scaling meaningful impact",
+        "Building a team + community",
+        "Replacing or exceeding my current income",
+        "Proving to myself I can actually do it"
+      ]},
+      { type: "single", question: "Q8 — Right now, where do you mostly show up online?", options: [
+        "Facebook",
+        "Instagram",
+        "TikTok",
+        "YouTube",
+        "Other / I barely show up"
+      ]},
+      { type: "single", question: "Q9 — How would you describe your current consistency with posting or creating content?", options: [
+        "I rarely post",
+        "I post sometimes but not consistently",
+        "I'm consistent but not business-focused yet",
+        "I'm consistent and intentional with content"
+      ]},
+      { type: "single", question: "Q10 — When it comes to talking about products or opportunities online…", options: [
+        "I’m confident and comfortable",
+        "I’m willing but nervous",
+        "I mostly avoid it right now",
+        "Haven’t really tried yet"
+      ]},
+      { type: "single", question: "Q11 — How do you feel about learning new tech/tools?", options: [
+        "Love it — I pick it up fast",
+        "I can learn it with clear steps",
+        "I get overwhelmed easily",
+        "I'd rather keep it super simple"
+      ]},
+      { type: "single", question: "Q12 — How do you prefer to be coached?", options: [
+        "Direct and straightforward",
+        "Encouraging and supportive",
+        "Step-by-step with examples",
+        "Give me the target and let me run"
+      ]},
+      { type: "single", question: "Q13 — In a perfect world, how many hours per week would you eventually like to be investing into your business?", options: [
+        "5–10 hours",
+        "10–15 hours",
+        "15–20 hours",
+        "20+ hours"
+      ]},
+      { type: "single", question: "Q14 — What best describes your current financial starting point?", options: [
+        "I’m comfortable but want more options",
+        "I’m tight and need relief fast",
+        "I’m rebuilding from a setback",
+        "I’m stable and focused on growth"
+      ]},
+      { type: "single", question: "Q15 — When you think about talking to people, what feels MOST natural?", options: [
+        "One-on-one conversations",
+        "Small group settings",
+        "Online messages / DM chats",
+        "Creating content that people respond to"
+      ]},
+      { type: "single", question: "Q16 — Which statement feels most true about your confidence level?", options: [
+        "I’m confident — I just need a system",
+        "I’m confident in some areas, shaky in others",
+        "My confidence is rebuilding",
+        "I’m not confident yet, but I’m willing"
+      ]},
+      { type: "single", question: "Q17 — How do you respond when a plan doesn’t work the first time?", options: [
+        "I regroup and try again",
+        "I need someone to walk through it with me",
+        "I tend to shut down and avoid it",
+        "I overthink what went wrong"
+      ]},
+      { type: "multi", question: "Q18 — What kind of support will help you actually follow through? (Select all that apply.)", options: [
+        "Clear weekly targets",
+        "Accountability check-ins",
+        "Community / team energy",
+        "Simple scripts and language",
+        "Visual trackers or dashboards"
+      ]},
+      { type: "single", question: "Q19 — When you think about earning with this, what feels most aligned?", options: [
+        "A solid side income",
+        "Replacing my current income",
+        "Building a serious long-term business",
+        "I’m still feeling this out"
+      ]},
+      { type: "single", question: "Q20 — If we built you a simple daily method of operation (DMO), what’s realistic for you right now?", options: [
+        "20–30 minutes per day",
+        "30–60 minutes per day",
+        "60–90 minutes per day",
+        "More than 90 minutes per day"
+      ]},
+      { type: "single", question: "Q21 — Which GEM style do you FEEL you resonate with most?", options: [
+        "Pearl — heart, connection, service",
+        "Ruby — recognition, fun, energy",
+        "Sapphire — structure, systems, clarity",
+        "Emerald — goals, numbers, wealth-building",
+        "Not sure yet"
+      ]},
+      { type: "multi", question: "Q22 — What usually pulls you OFF track when you set big goals? (Select all that apply.)", options: [
+        "Life chaos and distractions",
+        "No clear plan or structure",
+        "Lack of encouragement or community",
+        "Fear of judgment or failure",
+        "Time management / overwhelm"
+      ]},
+      { type: "multi", question: "Q23 — How do you prefer to track progress? (Select all that apply.)", options: [
+        "Daily check marks",
+        "Income movement",
+        "Emotional / energy check-ins",
+        "Visual charts / dashboards",
+        "Stories of people I’ve helped"
+      ]},
+      { type: "text", question: "Q24 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what’s really true for you here..." },
+      { type: "text", question: "Q25 — What are the top 1–2 fears or hesitations you want your coach to know before you start?", placeholder: "Be honest. This helps us coach you better." },
+      { type: "text", question: "Q26 — What strengths do you bring to the table that we can build on together?", placeholder: "Skills, experience, personality, anything that makes you an asset." },
+      { type: "text", question: "Q27 — What does a WIN in the next 90 days look like for you?", placeholder: "Describe it in your own words." },
+      { type: "text", question: "Q28 — Is there anything from your past business or work experience that we should *not* repeat this time?", placeholder: "Patterns, approaches, or situations you’re done with." },
+      { type: "text", question: "Q29 — How do you want your coach to show up for you when you’re struggling?", placeholder: "Direct tough love, gentle encouragement, structured action steps, etc." },
+      { type: "text", question: "Q30 — Anything else you want us to know about your vision, life season, or expectations?", placeholder: "Optional, but powerful if you share it." },
+      // Step 25 (non-answer): email capture
+      { type: "email", question: "And finally… what’s the best email for your custom Legacy Builder plan to land in? Use the same one you used to download your Real Brick Road™ booklet." }
+    ];
 
-  let step = 0;
-  let answers = {};
-  let multiSelections = new Set();
-  let otherText = "";
+    const TOTAL_STEPS = steps.length; // 25 total (24 answers + email)
 
-  function showBotMessage(msg) {
-    chat.innerHTML += `<div class="message bot">${msg}</div>`;
-    chat.scrollTop = chat.scrollHeight;
-  }
+    let currentStep = -1;   // intro first
+    let answers = [];       // 24 Deep Dive answers only
+    let userEmail = "";
 
-  function showUserMessage(msg) {
-    chat.innerHTML += `<div class="message user">${msg}</div>`;
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  function showLoading() {
-    if (document.getElementById("loading")) return;
-    chat.innerHTML += `<div class="message loading" id="loading">ANGUS is thinking</div>`;
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  function hideLoading() {
-    const loading = document.getElementById('loading');
-    if (loading) loading.remove();
-  }
-
-  function clearInputs() {
-    document.querySelectorAll('.input-wrap, .options, .inline-other').forEach(el => el.remove());
-  }
-
-  function askNext() {
-    if (step >= surveyFlow.length) {
-      finishSurvey();
-      return;
+    function showBotMessage(html) {
+      chat.innerHTML += `<div class="message bot">${html}</div>`;
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    clearInputs();
-    multiSelections.clear();
-    otherText = "";
+    function showUserMessage(text) {
+      chat.innerHTML += `<div class="message user">${text}</div>`;
+      chat.scrollTop = chat.scrollHeight;
+    }
 
-    const q = surveyFlow[step];
-    showLoading();
+    function showLoading() {
+      chat.innerHTML += `<div class="message loading" id="loading">ANGUS is thinking</div>`;
+      chat.scrollTop = chat.scrollHeight;
+    }
 
-    setTimeout(() => {
-      hideLoading();
-      const label = `Step ${step + 1} of ${surveyFlow.length}`;
-      showBotMessage(`<strong>${label}</strong>\n\n${q.question}`);
-      if (q.help) showBotMessage(`<div class="help">${q.help}</div>`);
-      renderInput(q);
-    }, 650);
-  }
+    function hideLoading() {
+      const el = document.getElementById('loading');
+      if (el) el.remove();
+    }
 
-  function renderInput(q) {
-    if (q.type === "single" || q.type === "multi") {
-      let html = "<div class='options' id='optionsBox'>";
+    function renderStep() {
+      currentStep++;
 
-      q.options.forEach(opt => {
-        const safe = opt.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-        html += `<button onclick="toggleOption('${safe}', this)">${opt}</button>`;
-      });
-
-      html += "</div>";
-
-      if (q.type === "multi") {
-        html += `
-          <div class="input-wrap">
-            <button class="next-btn" onclick="confirmMulti()">Next</button>
-          </div>`;
+      if (currentStep >= TOTAL_STEPS) {
+        return;
       }
 
-      chat.innerHTML += html;
-    } else {
-      const placeholder = q.placeholder || "Type your answer and press Enter.";
-      const long = q.id === "q12_online_presence" || q.id === "q8a_style_notes";
+      const step = steps[currentStep];
 
-      chat.innerHTML += `
-        <div class="input-wrap">
-          ${long
-            ? `<textarea id="textInput" placeholder="${placeholder.replace(/"/g, '&quot;')}"
-                onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();submitTextAnswer();}"></textarea>`
-            : `<input id="textInput" type="${q.type}" placeholder="${placeholder.replace(/"/g, '&quot;')}"
-                onkeydown="if(event.key==='Enter'){submitTextAnswer();}">`
+      showLoading();
+      setTimeout(() => {
+        hideLoading();
+
+        const stepLabel = `<div class="step-label">Step ${currentStep + 1} of ${TOTAL_STEPS}</div>`;
+        showBotMessage(stepLabel + step.question);
+
+        if (step.type === "single" || step.type === "multi") {
+          let html = `<div class="options">`;
+          step.options.forEach((opt, idx) => {
+            const safe = opt.replace(/"/g, '&quot;');
+            html += `<button type="button" data-index="${idx}" onclick="handleOptionClick(${currentStep}, '${step.type}', this, '${safe}')">${opt}</button>`;
+          });
+          html += `</div>`;
+          chat.innerHTML += html;
+
+          if (step.type === "multi") {
+            chat.innerHTML += `<button class="next-btn" onclick="finalizeMulti(${currentStep})">Next</button>`;
           }
-          <button class="next-btn" onclick="submitTextAnswer()">Next</button>
-        </div>
-      `;
-      document.getElementById("textInput").focus();
+
+        } else if (step.type === "text") {
+          chat.innerHTML += `
+            <div id="text-block-${currentStep}">
+              <textarea id="text-input-${currentStep}" placeholder="${step.placeholder || ''}"></textarea>
+              <button class="next-btn" onclick="saveTextAnswer(${currentStep})">Next</button>
+            </div>
+          `;
+        } else if (step.type === "email") {
+          chat.innerHTML += `
+            <div id="email-block">
+              <input id="email-input" type="email" placeholder="Enter your email..." />
+              <button class="submit-btn" onclick="saveEmail()">Submit</button>
+            </div>
+          `;
+        }
+
+        chat.scrollTop = chat.scrollHeight;
+
+      }, 700);
     }
-  }
 
-  // -------------------- SINGLE + MULTI OPTION TOGGLER --------------------
-  function toggleOption(option, btn) {
-    const q = surveyFlow[step];
+    // Handle single + multi-select clicks
+    function handleOptionClick(stepIndex, type, btn, value) {
+      if (type === "single") {
+        const container = btn.parentElement;
+        Array.from(container.querySelectorAll("button")).forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        // record & advance immediately
+        showUserMessage(value);
+        answers.push(value);
+        // remove options + buttons
+        container.remove();
+        const nextBtn = chat.querySelector(".next-btn");
+        if (nextBtn) nextBtn.remove();
+        setTimeout(renderStep, 300);
+      } else {
+        // multi-select toggle
+        btn.classList.toggle("selected");
+      }
+    }
 
-    // SINGLE SELECT LOGIC
-    if (q.type === "single") {
-      if (q.otherValue && option === q.otherValue) {
-        clearInputs();
-        showUserMessage(option);
-
-        chat.innerHTML += `
-          <div class="inline-other">
-            <label>Tell me what you mean by “Other”:</label>
-            <textarea id="singleOtherInput"></textarea>
-          </div>
-          <div class="input-wrap">
-            <button class="next-btn" onclick="submitSingleOther()">Next</button>
-          </div>
-        `;
-        document.getElementById("singleOtherInput").focus();
+    // Called when Next clicked on multi-select step
+    function finalizeMulti(stepIndex) {
+      const step = steps[stepIndex];
+      const container = chat.querySelector(".options:last-of-type");
+      if (!container) {
+        showBotMessage("Select at least one option.");
         return;
       }
-
-      clearInputs();
-      showUserMessage(option);
-      answers[q.id] = option;
-      step++;
-      setTimeout(askNext, 300);
-      return;
-    }
-
-    // MULTI SELECT
-    if (multiSelections.has(option)) {
-      multiSelections.delete(option);
-      btn.classList.remove("selected");
-
-      if (q.otherValue && option === q.otherValue) {
-        hideInlineOtherBox();
+      const selected = Array.from(container.querySelectorAll("button.selected")).map(b => b.textContent.trim());
+      if (selected.length === 0) {
+        showBotMessage("Select at least one option.");
+        return;
       }
-
-    } else {
-      multiSelections.add(option);
-      btn.classList.add("selected");
-
-      if (q.otherValue && option === q.otherValue) {
-        showInlineOtherBox();
-      }
-    }
-  }
-
-  function showInlineOtherBox() {
-    if (document.getElementById("inlineOtherBox")) return;
-
-    const div = document.createElement("div");
-    div.className = "inline-other";
-    div.id = "inlineOtherBox";
-    div.innerHTML = `
-      <label>Tell me what you mean by “Other”:</label>
-      <textarea id="otherInput"></textarea>
-    `;
-
-    const optionsBox = document.getElementById("optionsBox");
-    optionsBox.insertAdjacentElement("afterend", div);
-
-    const box = document.getElementById("otherInput");
-    box.addEventListener("input", e => otherText = e.target.value);
-    box.focus();
-  }
-
-  function hideInlineOtherBox() {
-    const box = document.getElementById("inlineOtherBox");
-    if (box) box.remove();
-    otherText = "";
-  }
-
-  // -------------------- SINGLE OTHER SUBMIT --------------------
-  function submitSingleOther() {
-    const val = (document.getElementById("singleOtherInput").value || "").trim();
-    if (!val) {
-      showBotMessage("Give me one clean line so I capture this right.");
-      return;
+      const summary = selected.join(", ");
+      showUserMessage(summary);
+      answers.push(summary);
+      container.remove();
+      const nextBtn = chat.querySelector(".next-btn");
+      if (nextBtn) nextBtn.remove();
+      setTimeout(renderStep, 300);
     }
 
-    showUserMessage(val);
-    const q = surveyFlow[step];
-    answers[q.id] = `Other: ${val}`;
-
-    clearInputs();
-    step++;
-    setTimeout(askNext, 300);
-  }
-
-  // -------------------- FIXED MULTI CONFIRM --------------------
-  function confirmMulti() {
-    const q = surveyFlow[step];
-
-    if (multiSelections.size === 0) {
-      showBotMessage("Pick at least one so I can coach you clean.");
-      return;
-    }
-
-    const picked = Array.from(multiSelections);
-
-    // NEW FIX — Read Other text directly from the textbox
-    if (q.otherValue && multiSelections.has(q.otherValue)) {
-      const box = document.getElementById("otherInput");
-      const val = box ? box.value.trim() : "";
-
+    // Text answer
+    function saveTextAnswer(stepIndex) {
+      const input = document.getElementById(`text-input-${stepIndex}`);
+      if (!input) return;
+      const val = input.value.trim();
       if (!val) {
-        showBotMessage("You tapped “Other.” Drop one clean line so I capture it right.");
+        showBotMessage("Go ahead and type your answer — it doesn’t have to be perfect.");
         return;
       }
-
-      picked.push(`Other: ${val}`);
+      showUserMessage(val);
+      answers.push(val);
+      document.getElementById(`text-block-${stepIndex}`).remove();
+      setTimeout(renderStep, 300);
     }
 
-    answers[q.id] = picked;
-
-    clearInputs();
-    showUserMessage(picked.join(", "));
-    step++;
-    setTimeout(askNext, 300);
-  }
-
-  // -------------------- TEXT QUESTIONS --------------------
-  function submitTextAnswer() {
-    const input = document.getElementById("textInput");
-    if (!input) return;
-
-    const val = input.value.trim();
-    const q = surveyFlow[step];
-
-    if (!val) {
-      if (q.id === "q8a_style_notes") {
-        showUserMessage("(Skipped)");
-        answers[q.id] = "";
-        clearInputs();
-        step++;
-        setTimeout(askNext, 300);
+    // Email capture (not part of Deep Dive 24 answers)
+    function saveEmail() {
+      const input = document.getElementById("email-input");
+      if (!input) return;
+      const email = input.value.trim();
+      if (!email) {
+        showBotMessage("I’ll need your email so your coach can prep your custom 90-day projection.");
         return;
       }
-      showBotMessage("Give me one clean line so I can dial this in.");
-      return;
+      userEmail = email;
+      showUserMessage(email);
+      document.getElementById("email-block").remove();
+      submitSurvey();
     }
 
-    showUserMessage(val);
-    answers[q.id] = val;
-    clearInputs();
-    step++;
-    setTimeout(askNext, 300);
-  }
-
-  // -------------------- SUBMIT --------------------
-  function finishSurvey() {
-    const email = (answers["q14_best_email"] || "").trim();
-    if (!email) {
-      showBotMessage("I need your best email so your plan lands clean.");
-      return;
-    }
-    submitSurvey(email);
-  }
-
-  function submitSurvey(email) {
-    showLoading();
-
-    const payload = {
-      email,
-      answers,
-      survey_type: "deepdive"
-    };
-
-    fetch(BACKEND_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(payload)
-    })
+    function submitSurvey() {
+      showLoading();
+      // answers MUST be an array — extra guard
+      if (!Array.isArray(answers)) {
+        answers = [];
+      }
+      fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          answers: answers
+        })
+      })
       .then(res => res.json())
       .then(data => {
         hideLoading();
         if (data.redirect_url) {
-          showBotMessage("Perfect. Taking you to your personalized Legacy Builder plan now...");
-          setTimeout(() => {
-            window.top.location.href = data.redirect_url;
-          }, 1200);
+          window.top.location.href = data.redirect_url;
         } else {
           showBotMessage("Something glitched. Refresh and try again.");
         }
       })
       .catch(err => {
-        console.error("Deep Dive submit error:", err);
+        console.error(err);
         hideLoading();
-        showBotMessage("There was an issue sending your answers. Try again.");
+        showBotMessage("Server issue. Refresh and try again.");
       });
-  }
+    }
 
-  // -------------------- INTRO --------------------
-  window.onload = () => {
-    showBotMessage(
-      "Alright, legend — that first round gave me your big picture. Now let's lock in the details for your Legacy Builder plan."
-    );
-    setTimeout(() => {
-      showBotMessage(
-        "Tap fast. If you hit “Other,” the box opens instantly — keep selecting as needed. Then hit Next."
-      );
-      setTimeout(askNext, 900);
-    }, 900);
-  };
-</script>
+    // Expose functions globally
+    window.handleOptionClick = handleOptionClick;
+    window.finalizeMulti = finalizeMulti;
+    window.saveTextAnswer = saveTextAnswer;
+    window.saveEmail = saveEmail;
+
+    // Intro + start
+    window.onload = function() {
+      showBotMessage("Alright legend — I’m ANGUS™. This Deep Dive locks in the intel your coach will use to build your Legacy Builder projection with precision. Answer honestly — this is for YOU.");
+      setTimeout(renderStep, 1400);
+    };
+  </script>
 </body>
 </html>

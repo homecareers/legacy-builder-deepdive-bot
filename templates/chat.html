@@ -248,9 +248,6 @@ def submit():
         email = (data.get("email") or "").trim() if isinstance(data.get("email"), str) else (data.get("email") or "")
         answers = data.get("answers")
 
-        # ----------------------
-        # 🔥 FIX APPLIED HERE
-        # ----------------------
         if not isinstance(answers, list):
             answers = []
 

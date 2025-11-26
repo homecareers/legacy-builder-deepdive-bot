@@ -153,10 +153,10 @@
         "I'm consistent and intentional with content"
       ]},
       { type: "single", question: "Q10 — When it comes to talking about products or opportunities online…", options: [
-        "I’m confident and comfortable",
-        "I’m willing but nervous",
+        "I'm confident and comfortable",
+        "I'm willing but nervous",
         "I mostly avoid it right now",
-        "Haven’t really tried yet"
+        "Haven't really tried yet"
       ]},
       { type: "single", question: "Q11 — How do you feel about learning new tech/tools?", options: [
         "Love it — I pick it up fast",
@@ -177,10 +177,10 @@
         "20+ hours"
       ]},
       { type: "single", question: "Q14 — What best describes your current financial starting point?", options: [
-        "I’m comfortable but want more options",
-        "I’m tight and need relief fast",
-        "I’m rebuilding from a setback",
-        "I’m stable and focused on growth"
+        "I'm comfortable but want more options",
+        "I'm tight and need relief fast",
+        "I'm rebuilding from a setback",
+        "I'm stable and focused on growth"
       ]},
       { type: "single", question: "Q15 — When you think about talking to people, what feels MOST natural?", options: [
         "One-on-one conversations",
@@ -189,12 +189,12 @@
         "Creating content that people respond to"
       ]},
       { type: "single", question: "Q16 — Which statement feels most true about your confidence level?", options: [
-        "I’m confident — I just need a system",
-        "I’m confident in some areas, shaky in others",
+        "I'm confident — I just need a system",
+        "I'm confident in some areas, shaky in others",
         "My confidence is rebuilding",
-        "I’m not confident yet, but I’m willing"
+        "I'm not confident yet, but I'm willing"
       ]},
-      { type: "single", question: "Q17 — How do you respond when a plan doesn’t work the first time?", options: [
+      { type: "single", question: "Q17 — How do you respond when a plan doesn't work the first time?", options: [
         "I regroup and try again",
         "I need someone to walk through it with me",
         "I tend to shut down and avoid it",
@@ -211,9 +211,9 @@
         "A solid side income",
         "Replacing my current income",
         "Building a serious long-term business",
-        "I’m still feeling this out"
+        "I'm still feeling this out"
       ]},
-      { type: "single", question: "Q20 — If we built you a simple daily method of operation (DMO), what’s realistic for you right now?", options: [
+      { type: "single", question: "Q20 — If we built you a simple daily method of operation (DMO), what's realistic for you right now?", options: [
         "20–30 minutes per day",
         "30–60 minutes per day",
         "60–90 minutes per day",
@@ -238,17 +238,17 @@
         "Income movement",
         "Emotional / energy check-ins",
         "Visual charts / dashboards",
-        "Stories of people I’ve helped"
+        "Stories of people I've helped"
       ]},
-      { type: "text", question: "Q24 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what’s really true for you here..." },
+      { type: "text", question: "Q24 — Why is NOW the right time for you to build something instead of waiting another year?", placeholder: "Type what's really true for you here..." },
       { type: "text", question: "Q25 — What are the top 1–2 fears or hesitations you want your coach to know before you start?", placeholder: "Be honest. This helps us coach you better." },
       { type: "text", question: "Q26 — What strengths do you bring to the table that we can build on together?", placeholder: "Skills, experience, personality, anything that makes you an asset." },
       { type: "text", question: "Q27 — What does a WIN in the next 90 days look like for you?", placeholder: "Describe it in your own words." },
-      { type: "text", question: "Q28 — Is there anything from your past business or work experience that we should *not* repeat this time?", placeholder: "Patterns, approaches, or situations you’re done with." },
-      { type: "text", question: "Q29 — How do you want your coach to show up for you when you’re struggling?", placeholder: "Direct tough love, gentle encouragement, structured action steps, etc." },
+      { type: "text", question: "Q28 — Is there anything from your past business or work experience that we should *not* repeat this time?", placeholder: "Patterns, approaches, or situations you're done with." },
+      { type: "text", question: "Q29 — How do you want your coach to show up for you when you're struggling?", placeholder: "Direct tough love, gentle encouragement, structured action steps, etc." },
       { type: "text", question: "Q30 — Anything else you want us to know about your vision, life season, or expectations?", placeholder: "Optional, but powerful if you share it." },
       // Step 25 (non-answer): email capture
-      { type: "email", question: "And finally… what’s the best email for your custom Legacy Builder plan to land in? Use the same one you used to download your Real Brick Road™ booklet." }
+      { type: "email", question: "And finally… what's the best email for your custom Legacy Builder plan to land in? Use the same one you used to download your Real Brick Road™ booklet." }
     ];
 
     const TOTAL_STEPS = steps.length; // 25 total (24 answers + email)
@@ -296,7 +296,12 @@
         if (step.type === "single" || step.type === "multi") {
           let html = `<div class="options">`;
           step.options.forEach((opt, idx) => {
-            const safe = opt.replace(/"/g, '&quot;');
+            // ----------------------
+            // 🔥 FIX APPLIED HERE
+            // Now escaping BOTH single quotes and double quotes
+            // to prevent JavaScript onclick handler breaking
+            // ----------------------
+            const safe = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             html += `<button type="button" data-index="${idx}" onclick="handleOptionClick(${currentStep}, '${step.type}', this, '${safe}')">${opt}</button>`;
           });
           html += `</div>`;
@@ -375,7 +380,7 @@
       if (!input) return;
       const val = input.value.trim();
       if (!val) {
-        showBotMessage("Go ahead and type your answer — it doesn’t have to be perfect.");
+        showBotMessage("Go ahead and type your answer — it doesn't have to be perfect.");
         return;
       }
       showUserMessage(val);
@@ -390,7 +395,7 @@
       if (!input) return;
       const email = input.value.trim();
       if (!email) {
-        showBotMessage("I’ll need your email so your coach can prep your custom 90-day projection.");
+        showBotMessage("I'll need your email so your coach can prep your custom 90-day projection.");
         return;
       }
       userEmail = email;
@@ -437,7 +442,7 @@
 
     // Intro + start
     window.onload = function() {
-      showBotMessage("Alright legend — I’m ANGUS™. This Deep Dive locks in the intel your coach will use to build your Legacy Builder projection with precision. Answer honestly — this is for YOU.");
+      showBotMessage("Alright legend — I'm ANGUS™. This Deep Dive locks in the intel your coach will use to build your Legacy Builder projection with precision. Answer honestly — this is for YOU.");
       setTimeout(renderStep, 1400);
     };
   </script>

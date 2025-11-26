@@ -13,9 +13,12 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
-HQ_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Prospects"
+# ✔️ You chose ONE TABLE — Survey Responses
+HQ_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Survey Responses"
 USERS_TABLE = os.getenv("AIRTABLE_USERS_TABLE") or "Users"
-DEEPDIVE_TABLE = os.getenv("AIRTABLE_DEEPDIVE_TABLE") or "Deep Dive Responses"
+
+# ❌ Removed Deep Dive Responses table entirely
+# DEEPDIVE_TABLE = <DELETED>
 
 GHL_API_KEY = os.getenv("GHL_API_KEY")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID")
@@ -39,12 +42,12 @@ def _h():
     }
 
 def _url(table, rec_id=None, params=None):
-    base = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(table)}"
-    if rec_id:
-        return f"{base}/{rec_id}"
-    if params:
-        return f"{base}?{urllib.parse.urlencode(params)}"
-    return base
+        base = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(table)}"
+        if rec_id:
+            return f"{base}/{rec_id}"
+        if params:
+            return f"{base}?{urllib.parse.urlencode(params)}"
+        return base
 
 
 # ---------------------- OPERATOR LOOKUP ---------------------- #
@@ -94,6 +97,7 @@ def update_prospect_with_operator_info(prospect_id: str, ghl_user_id: str):
 
 
 # ---------------------- PROSPECT HANDLING ---------------------- #
+# ✔️ All Deep Dive responses will now update THIS table.
 
 def get_or_create_prospect(email: str):
 
@@ -103,12 +107,14 @@ def get_or_create_prospect(email: str):
     r.raise_for_status()
     data = r.json()
 
+    # Record exists
     if data.get("records"):
         rec = data["records"][0]
         rec_id = rec["id"]
         fields = rec.get("fields", {})
         legacy_code = fields.get("Legacy Code")
 
+        # Assign legacy code if missing
         if not legacy_code:
             auto = fields.get("AutoNum")
             if auto is None:
@@ -124,12 +130,14 @@ def get_or_create_prospect(email: str):
 
         return legacy_code, rec_id
 
+    # Create new record
     payload = {"fields": {"Prospect Email": email}}
     r = requests.post(_url(HQ_TABLE), headers=_h(), json=payload)
     r.raise_for_status()
     rec = r.json()
     rec_id = rec["id"]
 
+    # Assign legacy code
     auto = rec.get("fields", {}).get("AutoNum")
     if auto is None:
         r2 = requests.get(_url(HQ_TABLE, rec_id), headers=_h())
@@ -145,23 +153,31 @@ def get_or_create_prospect(email: str):
     return legacy_code, rec_id
 
 
-# ---------------------- SAVE DEEP DIVE ---------------------- #
+# ---------------------- SAVE DEEP DIVE (Merged into one table) ---------------------- #
+# ✔️ This now writes Q07–Q30 directly into Survey Responses
 
 def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list):
 
     fields = {
         "Legacy Code": legacy_code,
-        "Prospects": [prospect_id],
         "Date Submitted": datetime.datetime.utcnow().isoformat(),
     }
 
+    # Map answers into fields DD_Q07 ... DD_Q30
     for idx, ans in enumerate(answers):
-        key = f"DD_Q{str(idx + 1).zfill(2)}"
+        q_number = idx + 7  # Q07–Q30
+        key = f"Q{str(q_number).zfill(2)}"
         fields[key] = ans
 
-    r = requests.post(_url(DEEPDIVE_TABLE), headers=_h(), json={"fields": fields})
+    # PATCH instead of POST (update the same row)
+    r = requests.patch(
+        _url(HQ_TABLE, prospect_id),
+        headers=_h(),
+        json={"fields": fields}
+    )
     r.raise_for_status()
-    return r.json().get("id")
+
+    return prospect_id
 
 
 # ---------------------- GHL SYNC ---------------------- #
@@ -197,26 +213,28 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             or contact.get("assignedTo")
         )
 
+        # Tag
         requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
             json={"tags": ["legacy deep dive submitted"]},
         )
 
+        # Push Q07–Q30
         for idx, ans in enumerate(answers):
-            field_name = f"dd_q{str(idx + 1).zfill(2)}"
+            field_name = f"dd_q{str(idx + 7).zfill(2)}"
             requests.put(
                 f"{GHL_BASE_URL}/contacts/{ghl_id}",
                 headers=headers,
                 json={"customField": {field_name: ans}},
             )
 
+        # Push Legacy Code + ATRID
         requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
             json={"customField": {"legacy_code_id": legacy_code}},
         )
-
         requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
@@ -243,31 +261,21 @@ def index():
 @app.route("/submit", methods=["POST"])
 def submit():
     try:
-
         data = request.json or {}
-        
-        # ----------------------
-        # 🔥 FIX APPLIED HERE
-        # Changed from .trim() to .strip() (Python syntax)
-        # Also simplified the logic
-        # ----------------------
         email = str(data.get("email", "")).strip()
-        
         answers = data.get("answers")
 
-        # Ensure answers is a list
         if not isinstance(answers, list):
             answers = []
 
-        # Pad answers to match DEEPDIVE_QUESTION_COUNT
         while len(answers) < DEEPDIVE_QUESTION_COUNT:
             answers.append("No response")
 
-        # Trim excess answers if needed
         answers = answers[:DEEPDIVE_QUESTION_COUNT]
 
         legacy_code, prospect_id = get_or_create_prospect(email)
         save_deepdive_to_airtable(legacy_code, prospect_id, answers)
+
         assigned_user_id = push_deepdive_to_ghl(
             email=email,
             answers=answers,

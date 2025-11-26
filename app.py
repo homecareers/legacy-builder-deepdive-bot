@@ -245,20 +245,26 @@ def submit():
     try:
 
         data = request.json or {}
-        email = (data.get("email") or "").trim() if isinstance(data.get("email"), str) else (data.get("email") or "")
-        answers = data.get("answers")
-
+        
         # ----------------------
         # 🔥 FIX APPLIED HERE
+        # Changed from .trim() to .strip() (Python syntax)
+        # Also simplified the logic
         # ----------------------
+        email = str(data.get("email", "")).strip()
+        
+        answers = data.get("answers")
+
+        # Ensure answers is a list
         if not isinstance(answers, list):
             answers = []
 
+        # Pad answers to match DEEPDIVE_QUESTION_COUNT
         while len(answers) < DEEPDIVE_QUESTION_COUNT:
             answers.append("No response")
 
+        # Trim excess answers if needed
         answers = answers[:DEEPDIVE_QUESTION_COUNT]
-        # ----------------------
 
         legacy_code, prospect_id = get_or_create_prospect(email)
         save_deepdive_to_airtable(legacy_code, prospect_id, answers)

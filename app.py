@@ -199,7 +199,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
     return prospect_id
 
 
-# ---------------------- GHL SYNC — FIXED VERSION ---------------------- #
+# ---------------------- GHL SYNC — FIXED WITH INDIVIDUAL UPDATES ---------------------- #
 
 def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
@@ -208,7 +208,7 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             "Content-Type": "application/json",
         }
 
-        # Lookup contact
+        # Lookup contact BY EMAIL
         lookup = requests.get(
             f"{GHL_BASE_URL}/contacts/lookup",
             headers=headers,
@@ -232,7 +232,9 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             or contact.get("assignedTo")
         )
 
-        # First, apply the tag
+        print(f"Found contact ID: {ghl_id} for email: {email}")
+
+        # Apply tag first
         tag_response = requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
@@ -240,76 +242,56 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
         )
         print(f"Tag Update Status: {tag_response.status_code}")
 
-        # GHL custom field keys (without contact. prefix)
-        ghl_fields = [
-            "q7_where_do_you_show_up_online_right_now",
-            "q8_social_presence_snapshot",
-            "q9_content_confidence_110",
-            "q10_90day_definition_of_this_worked",
-            "q11_desired_outcome",
-            "q12_why_that_outcome_matters",
-            "q13_weekly_schedule_reality",
-            "q14_highest_energy_windows",
-            "q15_commitments_we_must_build_around",
-            "q16_what_helps_you_stay_consistent",
-            "q17_what_usually_pulls_you_off_track",
-            "q18_stressdiscouragement_response",
-            "q19_strengths_you_bring",
-            "q20_skill_you_want_the_most_help_with",
-            "q21_systemfollowing_confidence_110",
-            "q22_what_would_300800month_support_right_now",
-            "q23_biggest_fear_or_hesitation",
-            "q24_if_nothing_changes_in_6_months_what_worries_you_most",
-            "q25_who_you_want_to_become_in_12_months",
-            "q26_one_feeling_you_never_want_again",
-            "q27__one_feeling_you_want_as_your_baseline",
-            "q28_preferred_accountability_style",
-            "q29_preferred_tracking_style",
-            "q30_why_is_now_the_right_time_to_build_something"
+        # GHL field mappings - these MUST match exactly what's in GHL
+        field_updates = [
+            ("contact.q7_where_do_you_show_up_online_right_now", answers[0]),
+            ("contact.q8_social_presence_snapshot", answers[1]),
+            ("contact.q9_content_confidence_110", answers[2]),
+            ("contact.q10_90day_definition_of_this_worked", answers[3]),
+            ("contact.q11_desired_outcome", answers[4]),
+            ("contact.q12_why_that_outcome_matters", answers[5]),
+            ("contact.q13_weekly_schedule_reality", answers[6]),
+            ("contact.q14_highest_energy_windows", answers[7]),
+            ("contact.q15_commitments_we_must_build_around", answers[8]),
+            ("contact.q16_what_helps_you_stay_consistent", answers[9]),
+            ("contact.q17_what_usually_pulls_you_off_track", answers[10]),
+            ("contact.q18_stressdiscouragement_response", answers[11]),
+            ("contact.q19_strengths_you_bring", answers[12]),
+            ("contact.q20_skill_you_want_the_most_help_with", answers[13]),
+            ("contact.q21_systemfollowing_confidence_110", answers[14]),
+            ("contact.q22_what_would_300800month_support_right_now", answers[15]),
+            ("contact.q23_biggest_fear_or_hesitation", answers[16]),
+            ("contact.q24_if_nothing_changes_in_6_months_what_worries_you_most", answers[17]),
+            ("contact.q25_who_you_want_to_become_in_12_months", answers[18]),
+            ("contact.q26_one_feeling_you_never_want_again", answers[19]),
+            ("contact.q27__one_feeling_you_want_as_your_baseline", answers[20]),
+            ("contact.q28_preferred_accountability_style", answers[21]),
+            ("contact.q29_preferred_tracking_style", answers[22]),
+            ("contact.q30_why_is_now_the_right_time_to_build_something", answers[23]),
+            ("contact.legacy_code_id", legacy_code),
+            ("contact.atrid", prospect_id)
         ]
 
-        # Build custom fields object - GHL v1 uses customField (singular) format
-        custom_field_data = {}
-        for idx, field_key in enumerate(ghl_fields):
-            # Use contact. prefix in the customField object
-            custom_field_data[f"contact.{field_key}"] = answers[idx]
-        
-        # Add legacy code and ATRID with contact. prefix
-        custom_field_data["contact.legacy_code_id"] = legacy_code
-        custom_field_data["contact.atrid"] = prospect_id
-
-        # Update with customField (singular) structure
-        update_payload = {
-            "customField": custom_field_data  # singular, with contact. prefix in keys
-        }
-
-        update_response = requests.put(
-            f"{GHL_BASE_URL}/contacts/{ghl_id}",
-            headers=headers,
-            json=update_payload
-        )
-        
-        print(f"GHL Update Status: {update_response.status_code}")
-        print(f"GHL Response: {update_response.text[:500]}")  # First 500 chars of response
-        
-        # Alternative: Try updating fields one by one if bulk update fails
-        if update_response.status_code != 200 or "error" in update_response.text.lower():
-            print("Bulk update may have failed, trying individual updates...")
-            
-            # Update critical fields individually
-            for field_key, value in [
-                ("contact.legacy_code_id", legacy_code),
-                ("contact.atrid", prospect_id),
-                ("contact.q7_where_do_you_show_up_online_right_now", answers[0]),
-                ("contact.q11_desired_outcome", answers[4]),
-                ("contact.q22_what_would_300800month_support_right_now", answers[15])
-            ]:
-                individual_response = requests.put(
+        # UPDATE EACH FIELD INDIVIDUALLY (more reliable with GHL v1)
+        success_count = 0
+        for field_key, value in field_updates:
+            try:
+                field_response = requests.put(
                     f"{GHL_BASE_URL}/contacts/{ghl_id}",
                     headers=headers,
-                    json={"customField": {field_key: value}}
+                    json={"customField": {field_key: str(value)}}  # Ensure value is string
                 )
-                print(f"Updated {field_key}: Status {individual_response.status_code}")
+                
+                if field_response.status_code == 200:
+                    success_count += 1
+                    print(f"✓ Updated {field_key}")
+                else:
+                    print(f"✗ Failed {field_key}: {field_response.status_code}")
+                    
+            except Exception as e:
+                print(f"Error updating {field_key}: {e}")
+
+        print(f"Successfully updated {success_count}/{len(field_updates)} fields")
 
         if assigned:
             update_prospect_with_operator_info(prospect_id, assigned)
@@ -318,7 +300,6 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
 
     except Exception as e:
         print(f"GHL Deep Dive Sync Error: {e}")
-        print(f"Full error details: {str(e)}")
         import traceback
         print(f"Traceback: {traceback.format_exc()}")
         return None

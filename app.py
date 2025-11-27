@@ -232,7 +232,15 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             or contact.get("assignedTo")
         )
 
-        # Remove the 'contact.' prefix - GHL API doesn't need it
+        # First, apply the tag
+        tag_response = requests.put(
+            f"{GHL_BASE_URL}/contacts/{ghl_id}",
+            headers=headers,
+            json={"tags": ["legacy deep dive submitted"]},
+        )
+        print(f"Tag Update Status: {tag_response.status_code}")
+
+        # GHL custom field keys (without contact. prefix)
         ghl_fields = [
             "q7_where_do_you_show_up_online_right_now",
             "q8_social_presence_snapshot",
@@ -260,19 +268,19 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             "q30_why_is_now_the_right_time_to_build_something"
         ]
 
-        # Build ALL custom fields in one object
-        custom_fields = {}
+        # Build custom fields object - GHL v1 uses customField (singular) format
+        custom_field_data = {}
         for idx, field_key in enumerate(ghl_fields):
-            custom_fields[field_key] = answers[idx]
+            # Use contact. prefix in the customField object
+            custom_field_data[f"contact.{field_key}"] = answers[idx]
         
-        # Add legacy code and ATRID
-        custom_fields["legacy_code_id"] = legacy_code
-        custom_fields["atrid"] = prospect_id
+        # Add legacy code and ATRID with contact. prefix
+        custom_field_data["contact.legacy_code_id"] = legacy_code
+        custom_field_data["contact.atrid"] = prospect_id
 
-        # SINGLE UPDATE with all fields + tag
+        # Update with customField (singular) structure
         update_payload = {
-            "tags": ["legacy deep dive submitted"],
-            "customFields": custom_fields  # All fields at once!
+            "customField": custom_field_data  # singular, with contact. prefix in keys
         }
 
         update_response = requests.put(
@@ -281,12 +289,27 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             json=update_payload
         )
         
-        # Debug logging
         print(f"GHL Update Status: {update_response.status_code}")
-        if update_response.status_code != 200:
-            print(f"GHL Update Error: {update_response.text}")
+        print(f"GHL Response: {update_response.text[:500]}")  # First 500 chars of response
         
-        update_response.raise_for_status()
+        # Alternative: Try updating fields one by one if bulk update fails
+        if update_response.status_code != 200 or "error" in update_response.text.lower():
+            print("Bulk update may have failed, trying individual updates...")
+            
+            # Update critical fields individually
+            for field_key, value in [
+                ("contact.legacy_code_id", legacy_code),
+                ("contact.atrid", prospect_id),
+                ("contact.q7_where_do_you_show_up_online_right_now", answers[0]),
+                ("contact.q11_desired_outcome", answers[4]),
+                ("contact.q22_what_would_300800month_support_right_now", answers[15])
+            ]:
+                individual_response = requests.put(
+                    f"{GHL_BASE_URL}/contacts/{ghl_id}",
+                    headers=headers,
+                    json={"customField": {field_key: value}}
+                )
+                print(f"Updated {field_key}: Status {individual_response.status_code}")
 
         if assigned:
             update_prospect_with_operator_info(prospect_id, assigned)
@@ -296,6 +319,8 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
     except Exception as e:
         print(f"GHL Deep Dive Sync Error: {e}")
         print(f"Full error details: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return None
 
 

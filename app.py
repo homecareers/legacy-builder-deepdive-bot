@@ -199,7 +199,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
     return prospect_id
 
 
-# ---------------------- GHL SYNC — EXACT UNIQUE KEYS ---------------------- #
+# ---------------------- GHL SYNC — FIXED VERSION ---------------------- #
 
 def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
@@ -232,61 +232,61 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             or contact.get("assignedTo")
         )
 
-        # Apply tag
-        requests.put(
-            f"{GHL_BASE_URL}/contacts/{ghl_id}",
-            headers=headers,
-            json={"tags": ["legacy deep dive submitted"]},
-        )
-
-        # EXACT unique keys from your GHL system (Q7–Q30)
+        # Remove the 'contact.' prefix - GHL API doesn't need it
         ghl_fields = [
-            "contact.q7_where_do_you_show_up_online_right_now",
-            "contact.q8_social_presence_snapshot",
-            "contact.q9_content_confidence_110",
-            "contact.q10_90day_definition_of_this_worked",
-            "contact.q11_desired_outcome",
-            "contact.q12_why_that_outcome_matters",
-            "contact.q13_weekly_schedule_reality",
-            "contact.q14_highest_energy_windows",
-            "contact.q15_commitments_we_must_build_around",
-            "contact.q16_what_helps_you_stay_consistent",
-            "contact.q17_what_usually_pulls_you_off_track",
-            "contact.q18_stressdiscouragement_response",
-            "contact.q19_strengths_you_bring",
-            "contact.q20_skill_you_want_the_most_help_with",
-            "contact.q21_systemfollowing_confidence_110",
-            "contact.q22_what_would_300800month_support_right_now",
-            "contact.q23_biggest_fear_or_hesitation",
-            "contact.q24_if_nothing_changes_in_6_months_what_worries_you_most",
-            "contact.q25_who_you_want_to_become_in_12_months",
-            "contact.q26_one_feeling_you_never_want_again",
-            "contact.q27__one_feeling_you_want_as_your_baseline",
-            "contact.q28_preferred_accountability_style",
-            "contact.q29_preferred_tracking_style",
-            "contact.q30_why_is_now_the_right_time_to_build_something"
+            "q7_where_do_you_show_up_online_right_now",
+            "q8_social_presence_snapshot",
+            "q9_content_confidence_110",
+            "q10_90day_definition_of_this_worked",
+            "q11_desired_outcome",
+            "q12_why_that_outcome_matters",
+            "q13_weekly_schedule_reality",
+            "q14_highest_energy_windows",
+            "q15_commitments_we_must_build_around",
+            "q16_what_helps_you_stay_consistent",
+            "q17_what_usually_pulls_you_off_track",
+            "q18_stressdiscouragement_response",
+            "q19_strengths_you_bring",
+            "q20_skill_you_want_the_most_help_with",
+            "q21_systemfollowing_confidence_110",
+            "q22_what_would_300800month_support_right_now",
+            "q23_biggest_fear_or_hesitation",
+            "q24_if_nothing_changes_in_6_months_what_worries_you_most",
+            "q25_who_you_want_to_become_in_12_months",
+            "q26_one_feeling_you_never_want_again",
+            "q27__one_feeling_you_want_as_your_baseline",
+            "q28_preferred_accountability_style",
+            "q29_preferred_tracking_style",
+            "q30_why_is_now_the_right_time_to_build_something"
         ]
 
-        # Push Q7–Q30 values to GHL
+        # Build ALL custom fields in one object
+        custom_fields = {}
         for idx, field_key in enumerate(ghl_fields):
-            requests.put(
-                f"{GHL_BASE_URL}/contacts/{ghl_id}",
-                headers=headers,
-                json={"customField": {field_key: answers[idx]}},
-            )
+            custom_fields[field_key] = answers[idx]
+        
+        # Add legacy code and ATRID
+        custom_fields["legacy_code_id"] = legacy_code
+        custom_fields["atrid"] = prospect_id
 
-        # Assign legacy code + ATRID
-        requests.put(
+        # SINGLE UPDATE with all fields + tag
+        update_payload = {
+            "tags": ["legacy deep dive submitted"],
+            "customFields": custom_fields  # All fields at once!
+        }
+
+        update_response = requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
-            json={"customField": {"legacy_code_id": legacy_code}},
+            json=update_payload
         )
-
-        requests.put(
-            f"{GHL_BASE_URL}/contacts/{ghl_id}",
-            headers=headers,
-            json={"customField": {"atrid": prospect_id}},
-        )
+        
+        # Debug logging
+        print(f"GHL Update Status: {update_response.status_code}")
+        if update_response.status_code != 200:
+            print(f"GHL Update Error: {update_response.text}")
+        
+        update_response.raise_for_status()
 
         if assigned:
             update_prospect_with_operator_info(prospect_id, assigned)
@@ -295,6 +295,7 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
 
     except Exception as e:
         print(f"GHL Deep Dive Sync Error: {e}")
+        print(f"Full error details: {str(e)}")
         return None
 
 

@@ -14,7 +14,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
-# ✔️ One-table architecture — all survey data lives in Survey Responses
+# Deep Dive writes into Survey Responses table (per your setup)
 HQ_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Survey Responses"
 USERS_TABLE = os.getenv("AIRTABLE_USERS_TABLE") or "Users"
 
@@ -28,9 +28,7 @@ DEEPDIVE_REDIRECT_URL = (
     or "https://poweredbylegacycode.com/nextstep"
 )
 
-# Deep Dive 2 = 24 questions (Q7–Q30)
 DEEPDIVE_QUESTION_COUNT = int(os.getenv("DEEPDIVE_QUESTION_COUNT", "24"))
-
 
 # ---------------------- AIRTABLE HELPERS ---------------------- #
 
@@ -47,7 +45,6 @@ def _url(table, rec_id=None, params=None):
     if params:
         return f"{base}?{urllib.parse.urlencode(params)}"
     return base
-
 
 # ---------------------- OPERATOR LOOKUP ---------------------- #
 
@@ -91,7 +88,6 @@ def update_prospect_with_operator_info(prospect_id: str, ghl_user_id: str):
     except Exception as e:
         print(f"Error updating prospect with operator info: {e}")
 
-
 # ---------------------- PROSPECT HANDLING ---------------------- #
 
 def get_or_create_prospect(email: str):
@@ -113,8 +109,7 @@ def get_or_create_prospect(email: str):
         if not legacy_code:
             auto = fields.get("AutoNum")
             if auto is None:
-                auto_data = requests.get(_url(HQ_TABLE, rec_id), headers=_h()).json()
-                auto = auto_data.get("fields", {}).get("AutoNum")
+                auto = requests.get(_url(HQ_TABLE, rec_id), headers=_h()).json().get("fields", {}).get("AutoNum")
 
             legacy_code = f"Legacy-X25-OP{1000 + int(auto)}"
             requests.patch(
@@ -125,18 +120,16 @@ def get_or_create_prospect(email: str):
 
         return legacy_code, rec_id
 
-    # ❗ Record does NOT exist, create it
+    # ❗ Create new record if not found
     payload = {"fields": {"Prospect Email": email}}
     r = requests.post(_url(HQ_TABLE), headers=_h(), json=payload)
     r.raise_for_status()
     rec = r.json()
     rec_id = rec["id"]
 
-    # Assign legacy code
     auto = rec.get("fields", {}).get("AutoNum")
     if auto is None:
-        auto_data = requests.get(_url(HQ_TABLE, rec_id), headers=_h()).json()
-        auto = auto_data.get("fields", {}).get("AutoNum")
+        auto = requests.get(_url(HQ_TABLE, rec_id), headers=_h()).json().get("fields", {}).get("AutoNum")
 
     legacy_code = f"Legacy-X25-OP{1000 + int(auto)}"
     requests.patch(
@@ -147,8 +140,7 @@ def get_or_create_prospect(email: str):
 
     return legacy_code, rec_id
 
-
-# ---------------------- SAVE DEEP DIVE — exact Airtable fields ---------------------- #
+# ---------------------- SAVE DEEP DIVE TO AIRTABLE ---------------------- #
 
 def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list):
 
@@ -179,6 +171,12 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
         "q30_why_is_now_the_right_time_to_build_something"
     ]
 
+    # REQUIRED VARIABLE — this was missing before
+    fields = {
+        "Legacy Code": legacy_code,
+        "Date Submitted": datetime.datetime.utcnow().isoformat(),
+    }
+
     for idx, value in enumerate(answers):
         fields[deepdive_fields[idx]] = value
 
@@ -191,8 +189,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
 
     return prospect_id
 
-
-# ---------------------- GHL SYNC — WITH 0.4-second RATE LIMIT ---------------------- #
+# ---------------------- GHL SYNC ---------------------- #
 
 def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
@@ -224,18 +221,14 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             or contact.get("assignedTo")
         )
 
-        print(f"Found contact ID: {ghl_id} for email: {email}")
-
-        tag_response = requests.put(
+        requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
             json={"tags": ["legacy deep dive submitted"]},
         )
-        print(f"Tag Update Status: {tag_response.status_code}")
 
-        # ✅ ONLY CHANGE: remove 'contact.' prefix from keys
         field_updates = [
-            ("q7_where_do_you_show_up_online_right_now", answers[0]),
+            ("07_where_do_you_show_up_online_right_now", answers[0]),
             ("q8_social_presence_snapshot", answers[1]),
             ("q9_content_confidence_110", answers[2]),
             ("q10_90day_definition_of_this_worked", answers[3]),
@@ -249,56 +242,25 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             ("q18_stressdiscouragement_response", answers[11]),
             ("q19_strengths_you_bring", answers[12]),
             ("q20_skill_you_want_the_most_help_with", answers[13]),
-            ("q21_systemfollowing_confidence_110", answers[14]),
+            ("q21__systemfollowing_confidence_110", answers[14]),
             ("q22_what_would_300800month_support_right_now", answers[15]),
             ("q23__biggest_fear_or_hesitation", answers[16]),
             ("q24__if_nothing_changes_in_6_months_what_worries_you", answers[17]),
             ("q25_who_you_want_to_become_in_12_months", answers[18]),
-            ("q26_one_feeling_you_never_want_again", answers[19]),
+            ("q26__one_feeling_you_never_want_again", answers[19]),
             ("q27__one_feeling_you_want_as_your_baseline", answers[20]),
             ("q28_preferred_accountability_style", answers[21]),
             ("q29_preferred_tracking_style", answers[22]),
-            ("q30_why_is_now_the_right_time_to_build_something", answers[23]),
-            ("legacy_code_id", legacy_code),
-            ("atrid", prospect_id)
+            ("q30_why_is_now_the_right_time_to_build_something", answers[23])
         ]
 
-        success_count = 0
-        failed_fields = []
-
         for field_key, value in field_updates:
-
-            max_retries = 3
-            attempt = 0
-            updated = False
-
-            while attempt < max_retries and not updated:
-
-                field_response = requests.put(
-                    f"{GHL_BASE_URL}/contacts/{ghl_id}",
-                    headers=headers,
-                    json={"customField": {field_key: str(value)}}
-                )
-
-                if field_response.status_code == 200:
-                    success_count += 1
-                    updated = True
-                    print(f"✓ Updated {field_key}")
-                else:
-                    attempt += 1
-                    print(f"Retry {attempt}/{max_retries} for {field_key} — {field_response.status_code}")
-                    time.sleep(0.4)
-
-            if not updated:
-                failed_fields.append(field_key)
-                print(f"✗ Failed {field_key} after retries.")
-
+            requests.put(
+                f"{GHL_BASE_URL}/contacts/{ghl_id}",
+                headers=headers,
+                json={"customField": {field_key: str(value)}}
+            )
             time.sleep(0.4)
-
-        print(f"\nSuccessfully updated {success_count}/{len(field_updates)} GHL fields")
-
-        if failed_fields:
-            print(f"Failed fields: {', '.join(failed_fields)}")
 
         if assigned:
             update_prospect_with_operator_info(prospect_id, assigned)
@@ -309,24 +271,18 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
         print(f"GHL Deep Dive Sync Error: {e}")
         return None
 
-
 # ---------------------- ROUTES ---------------------- #
 
 @app.route("/")
 def index():
     return render_template("chat.html")
 
-
 @app.route("/submit", methods=["POST"])
 def submit():
     try:
         data = request.json or {}
-
         email = str(data.get("email", "")).strip()
-        answers = data.get("answers")
-
-        if not isinstance(answers, list):
-            answers = []
+        answers = data.get("answers") or []
 
         while len(answers) < DEEPDIVE_QUESTION_COUNT:
             answers.append("No response")
@@ -334,20 +290,13 @@ def submit():
         answers = answers[:DEEPDIVE_QUESTION_COUNT]
 
         legacy_code, prospect_id = get_or_create_prospect(email)
-
         save_deepdive_to_airtable(legacy_code, prospect_id, answers)
+        assigned_user_id = push_deepdive_to_ghl(email, answers, legacy_code, prospect_id)
 
-        assigned_user_id = push_deepdive_to_ghl(
-            email=email,
-            answers=answers,
-            legacy_code=legacy_code,
-            prospect_id=prospect_id
+        redirect_url = (
+            f"{DEEPDIVE_REDIRECT_URL}?uid={assigned_user_id}"
+            if assigned_user_id else DEEPDIVE_REDIRECT_URL
         )
-
-        if assigned_user_id:
-            redirect_url = f"{DEEPDIVE_REDIRECT_URL}?uid={assigned_user_id}"
-        else:
-            redirect_url = DEEPDIVE_REDIRECT_URL
 
         return jsonify({"redirect_url": redirect_url})
 
@@ -355,11 +304,9 @@ def submit():
         print(f"Deep Dive Submit Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/health")
 def health():
     return jsonify({"status": "healthy"})
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

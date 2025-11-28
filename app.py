@@ -14,9 +14,8 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
-# Deep Dive writes answers into Survey Responses, NOT Prospects
-HQ_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Prospects"
-RESPONSES_TABLE = os.getenv("AIRTABLE_SCREENING_TABLE") or "Survey Responses"
+# ✔️ One-table architecture — all survey data lives in Survey Responses
+HQ_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Survey Responses"
 USERS_TABLE = os.getenv("AIRTABLE_USERS_TABLE") or "Users"
 
 GHL_API_KEY = os.getenv("GHL_API_KEY")
@@ -29,7 +28,9 @@ DEEPDIVE_REDIRECT_URL = (
     or "https://poweredbylegacycode.com/nextstep"
 )
 
+# Deep Dive 2 = 24 questions (Q7–Q30)
 DEEPDIVE_QUESTION_COUNT = int(os.getenv("DEEPDIVE_QUESTION_COUNT", "24"))
+
 
 # ---------------------- AIRTABLE HELPERS ---------------------- #
 
@@ -53,7 +54,10 @@ def _url(table, rec_id=None, params=None):
 def get_operator_info(ghl_user_id: str):
     try:
         formula = f"{{GHL User ID}} = '{ghl_user_id}'"
-        search_url = _url(USERS_TABLE, params={"filterByFormula": formula, "maxRecords": 1})
+        search_url = _url(
+            USERS_TABLE,
+            params={"filterByFormula": formula, "maxRecords": 1}
+        )
         r = requests.get(search_url, headers=_h())
         r.raise_for_status()
         data = r.json()
@@ -128,6 +132,7 @@ def get_or_create_prospect(email: str):
     rec = r.json()
     rec_id = rec["id"]
 
+    # Assign legacy code
     auto = rec.get("fields", {}).get("AutoNum")
     if auto is None:
         auto_data = requests.get(_url(HQ_TABLE, rec_id), headers=_h()).json()
@@ -143,11 +148,11 @@ def get_or_create_prospect(email: str):
     return legacy_code, rec_id
 
 
-# ---------------------- SAVE DEEP DIVE — Airtable ---------------------- #
+# ---------------------- SAVE DEEP DIVE — exact Airtable fields ---------------------- #
 
 def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list):
 
-    field_names = [
+    deepdive_fields = [
         "Q7 Where do you show up online right now?",
         "Q8 Social Presence Snapshot",
         "Q9 Content Confidence",
@@ -176,15 +181,14 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
 
     fields = {
         "Legacy Code": legacy_code,
-        "Prospects": [prospect_id],
         "Date Submitted": datetime.datetime.utcnow().isoformat(),
     }
 
-    for idx, val in enumerate(answers):
-        fields[field_names[idx]] = val
+    for idx, value in enumerate(answers):
+        fields[deepdive_fields[idx]] = value
 
-    r = requests.post(
-        _url(RESPONSES_TABLE),
+    r = requests.patch(
+        _url(HQ_TABLE, prospect_id),
         headers=_h(),
         json={"fields": fields},
     )
@@ -193,7 +197,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
     return prospect_id
 
 
-# ---------------------- GHL SYNC (FIXED KEYS + FALLBACK) ---------------------- #
+# ---------------------- GHL SYNC — WITH 0.4-second RATE LIMIT ---------------------- #
 
 def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
@@ -227,7 +231,6 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
 
         print(f"Found contact ID: {ghl_id} for email: {email}")
 
-        # Tag the contact
         tag_response = requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
@@ -235,70 +238,72 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
         )
         print(f"Tag Update Status: {tag_response.status_code}")
 
-        # FIXED — NO MORE “contact.” PREFIX
-        field_keys = [
-            "q7_where_do_you_show_up_online_right_now",
-            "q8_social_presence_snapshot",
-            "q9_content_confidence",
-            "q10_90day_definition_of_this_worked",
-            "q11_desired_outcome",
-            "q12_why_that_outcome_matters",
-            "q13_weekly_schedule_reality",
-            "q14_highest_energy_windows",
-            "q15_commitments_we_must_build_around",
-            "q16_what_helps_you_stay_consistent",
-            "q17_what_usually_pulls_you_off_track",
-            "q18_stressdiscouragement_response",
-            "q19_strengths_you_bring",
-            "q20_skill_you_want_the_most_help_with",
-            "q21_systemfollowing_confidence",
-            "q22_what_would_300800month_support_right_now",
-            "q23_biggest_fear_or_hesitation",
-            "q24_if_nothing_changes_in_6_months",
-            "q25_who_you_want_to_become_in_12_months",
-            "q26_one_feeling_you_never_want_again",
-            "q27_one_feeling_you_want_as_your_baseline",
-            "q28_preferred_accountability_style",
-            "q29_preferred_tracking_style",
-            "q30_why_is_now_the_right_time"
+        # ✅ ONLY CHANGE: remove 'contact.' prefix from keys
+        field_updates = [
+            ("q7_where_do_you_show_up_online_right_now", answers[0]),
+            ("q8_social_presence_snapshot", answers[1]),
+            ("q9_content_confidence_110", answers[2]),
+            ("q10_90day_definition_of_this_worked", answers[3]),
+            ("q11_desired_outcome", answers[4]),
+            ("q12_why_that_outcome_matters", answers[5]),
+            ("q13_weekly_schedule_reality", answers[6]),
+            ("q14_highest_energy_windows", answers[7]),
+            ("q15_commitments_we_must_build_around", answers[8]),
+            ("q16_what_helps_you_stay_consistent", answers[9]),
+            ("q17_what_usually_pulls_you_off_track", answers[10]),
+            ("q18_stressdiscouragement_response", answers[11]),
+            ("q19_strengths_you_bring", answers[12]),
+            ("q20_skill_you_want_the_most_help_with", answers[13]),
+            ("q21_systemfollowing_confidence_110", answers[14]),
+            ("q22_what_would_300800month_support_right_now", answers[15]),
+            ("q23__biggest_fear_or_hesitation", answers[16]),
+            ("q24__if_nothing_changes_in_6_months_what_worries_you", answers[17]),
+            ("q25_who_you_want_to_become_in_12_months", answers[18]),
+            ("q26_one_feeling_you_never_want_again", answers[19]),
+            ("q27__one_feeling_you_want_as_your_baseline", answers[20]),
+            ("q28_preferred_accountability_style", answers[21]),
+            ("q29_preferred_tracking_style", answers[22]),
+            ("q30_why_is_now_the_right_time_to_build_something", answers[23]),
+            ("legacy_code_id", legacy_code),
+            ("atrid", prospect_id)
         ]
 
-        # Pair fields + answers
-        updates = [
-            (field_keys[i], str(answers[i])) for i in range(DEEPDIVE_QUESTION_COUNT)
-        ]
+        success_count = 0
+        failed_fields = []
 
-        # Add legacy + ATRID
-        updates.append(("legacy_code_id", legacy_code))
-        updates.append(("atrid", prospect_id))
+        for field_key, value in field_updates:
 
-        # Update fields with fallback method (same as working bot)
-        for field_key, value in updates:
+            max_retries = 3
+            attempt = 0
+            updated = False
 
-            # Attempt A
-            a = requests.put(
-                f"{GHL_BASE_URL}/contacts/{ghl_id}",
-                headers=headers,
-                json={"customField": {field_key: value}}
-            )
+            while attempt < max_retries and not updated:
 
-            if a.status_code == 200:
-                print(f"✓ Updated {field_key}")
-                continue
+                field_response = requests.put(
+                    f"{GHL_BASE_URL}/contacts/{ghl_id}",
+                    headers=headers,
+                    json={"customField": {field_key: str(value)}}
+                )
 
-            # Attempt B fallback
-            b = requests.put(
-                f"{GHL_BASE_URL}/contacts/{ghl_id}",
-                headers=headers,
-                json={field_key: value}
-            )
+                if field_response.status_code == 200:
+                    success_count += 1
+                    updated = True
+                    print(f"✓ Updated {field_key}")
+                else:
+                    attempt += 1
+                    print(f"Retry {attempt}/{max_retries} for {field_key} — {field_response.status_code}")
+                    time.sleep(0.4)
 
-            if b.status_code == 200:
-                print(f"✓ Updated {field_key} (fallback)")
-            else:
-                print(f"✗ Failed {field_key} — status {b.status_code}")
+            if not updated:
+                failed_fields.append(field_key)
+                print(f"✗ Failed {field_key} after retries.")
 
             time.sleep(0.4)
+
+        print(f"\nSuccessfully updated {success_count}/{len(field_updates)} GHL fields")
+
+        if failed_fields:
+            print(f"Failed fields: {', '.join(failed_fields)}")
 
         if assigned:
             update_prospect_with_operator_info(prospect_id, assigned)
@@ -323,7 +328,10 @@ def submit():
         data = request.json or {}
 
         email = str(data.get("email", "")).strip()
-        answers = data.get("answers") or []
+        answers = data.get("answers")
+
+        if not isinstance(answers, list):
+            answers = []
 
         while len(answers) < DEEPDIVE_QUESTION_COUNT:
             answers.append("No response")

@@ -153,36 +153,32 @@ def get_or_create_prospect(email: str):
 def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list):
 
     deepdive_fields = [
-        "Q7 Where do you show up online right now?",
-        "Q8 Social Presence Snapshot",
-        "Q9 Content Confidence",
-        "Q10 90-Day Definition of This WORKED",
-        "Q11 Desired Outcome",
-        "Q12 Why That Outcome Matters",
-        "Q13 Weekly Schedule Reality",
-        "Q14 Highest Energy Windows",
-        "Q15 Commitments We Must Build Around",
-        "Q16 What Helps You Stay Consistent?",
-        "Q17 What Usually Pulls You Off Track?",
-        "Q18 Stress/Discouragement Response",
-        "Q19 Strengths You Bring",
-        "Q20 Skill You Want the MOST Help With",
-        "Q21 System-Following Confidence",
-        "Q22 What Would $300–$800/month Support Right Now?",
-        "Q23 Biggest Fear or Hesitation",
-        "Q24 If Nothing Changes in 6 Months, What Worries You Most?",
-        "Q25 Who You Want to Become in 12 Months",
-        "Q26 One Feeling You NEVER Want Again",
-        "Q27 One Feeling You WANT as Your Baseline",
-        "Q28 Preferred Accountability Style",
-        "Q29 Preferred Tracking Style",
-        "Q30 Why is NOW the right time to build something?"
+        "07_where_do_you_show_up_online_right_now",
+        "q8_social_presence_snapshot",
+        "q9_content_confidence_110",
+        "q10_90day_definition_of_this_worked",
+        "q11_desired_outcome",
+        "q12_why_that_outcome_matters",
+        "q13_weekly_schedule_reality",
+        "q14_highest_energy_windows",
+        "q15_commitments_we_must_build_around",
+        "q16_what_helps_you_stay_consistent",
+        "q17_what_usually_pulls_you_off_track",
+        "q18_stressdiscouragement_response",
+        "q19_strengths_you_bring",
+        "q20_skill_you_want_the_most_help_with",
+        "q21__systemfollowing_confidence_110",
+        "q22_what_would_300800month_support_right_now",
+        "q23__biggest_fear_or_hesitation",
+        "q24__if_nothing_changes_in_6_months_what_worries_you",
+        "q25_who_you_want_to_become_in_12_months",
+        "q26__one_feeling_you_never_want_again",
+        "q27__one_feeling_you_want_as_your_baseline",
+        "q28_preferred_accountability_style",
+        "q29_preferred_tracking_style",
+        "q30_why_is_now_the_right_time_to_build_something
+"
     ]
-
-    fields = {
-        "Legacy Code": legacy_code,
-        "Date Submitted": datetime.datetime.utcnow().isoformat(),
-    }
 
     for idx, value in enumerate(answers):
         fields[deepdive_fields[idx]] = value

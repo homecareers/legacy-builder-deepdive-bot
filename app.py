@@ -176,8 +176,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
         "q27__one_feeling_you_want_as_your_baseline",
         "q28_preferred_accountability_style",
         "q29_preferred_tracking_style",
-        "q30_why_is_now_the_right_time_to_build_something
-"
+        "q30_why_is_now_the_right_time_to_build_something"
     ]
 
     for idx, value in enumerate(answers):

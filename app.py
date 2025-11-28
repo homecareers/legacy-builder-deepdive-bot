@@ -3,7 +3,6 @@ import requests
 import os
 import datetime
 import urllib.parse
-import time
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -198,7 +197,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
     return prospect_id
 
 
-# ---------------------- GHL SYNC — ONLY FIXED KEYS ---------------------- #
+# ---------------------- GHL SYNC — BATCH UPDATE, NO DELAYS ---------------------- #
 
 def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
@@ -207,6 +206,7 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             "Content-Type": "application/json",
         }
 
+        # Look up the contact
         lookup = requests.get(
             f"{GHL_BASE_URL}/contacts/lookup",
             headers=headers,
@@ -240,70 +240,51 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
         )
         print(f"Tag Update Status: {tag_response.status_code}")
 
-        # ✅ Correct GHL custom field keys (no 'contact.' prefix, no legacy_code_id/atrid)
-        field_updates = [
-            ("07_where_do_you_show_up_online_right_now", answers[0]),
-            ("q8_social_presence_snapshot", answers[1]),
-            ("q9_content_confidence_110", answers[2]),
-            ("q10_90day_definition_of_this_worked", answers[3]),
-            ("q11_desired_outcome", answers[4]),
-            ("q12_why_that_outcome_matters", answers[5]),
-            ("q13_weekly_schedule_reality", answers[6]),
-            ("q14_highest_energy_windows", answers[7]),
-            ("q15_commitments_we_must_build_around", answers[8]),
-            ("q16_what_helps_you_stay_consistent", answers[9]),
-            ("q17_what_usually_pulls_you_off_track", answers[10]),
-            ("q18_stressdiscouragement_response", answers[11]),
-            ("q19_strengths_you_bring", answers[12]),
-            ("q20_skill_you_want_the_most_help_with", answers[13]),
-            ("q21_systemfollowing_confidence_110", answers[14]),
-            ("q22_what_would_300800month_support_right_now", answers[15]),
-            ("q23_biggest_fear_or_hesitation", answers[16]),
-            ("q24_if_nothing_changes_in_6_months_what_worries_you", answers[17]),
-            ("q25_who_you_want_to_become_in_12_months", answers[18]),
-            ("q26_one_feeling_you_never_want_again", answers[19]),
-            ("q27_one_feeling_you_want_as_your_baseline", answers[20]),
-            ("q28_preferred_accountability_style", answers[21]),
-            ("q29_preferred_tracking_style", answers[22]),
-            ("q30_why_is_now_the_right_time_to_build_something", answers[23]),
-        ]
+        # ✅ BATCH UPDATE - All fields in ONE API call with corrected field names
+        all_custom_fields = {
+            "07_where_do_you_show_up_online_right_now": str(answers[0]),
+            "q8_social_presence_snapshot": str(answers[1]),
+            "q9_content_confidence_110": str(answers[2]),
+            "q10_90day_definition_of_this_worked": str(answers[3]),
+            "q11_desired_outcome": str(answers[4]),
+            "q12_why_that_outcome_matters": str(answers[5]),
+            "q13_weekly_schedule_reality": str(answers[6]),
+            "q14_highest_energy_windows": str(answers[7]),
+            "q15_commitments_we_must_build_around": str(answers[8]),
+            "q16_what_helps_you_stay_consistent": str(answers[9]),
+            "q17_what_usually_pulls_you_off_track": str(answers[10]),
+            "q18_stressdiscouragement_response": str(answers[11]),
+            "q19_strengths_you_bring": str(answers[12]),
+            "q20_skill_you_want_the_most_help_with": str(answers[13]),
+            "q21_systemfollowing_confidence_110": str(answers[14]),
+            "q22_what_would_300800month_support_right_now": str(answers[15]),
+            "q23__biggest_fear_or_hesitation": str(answers[16]),  # Fixed: double underscore
+            "q24__if_nothing_changes_in_6_months_what_worries_you_most": str(answers[17]),  # Fixed: double underscore + _most
+            "q25_who_you_want_to_become_in_12_months": str(answers[18]),
+            "q26__one_feeling_you_never_want_again": str(answers[19]),  # Fixed: double underscore
+            "q27__one_feeling_you_want_as_your_baseline": str(answers[20]),  # Fixed: double underscore
+            "q28_preferred_accountability_style": str(answers[21]),
+            "q29_preferred_tracking_style": str(answers[22]),
+            "q30_why_is_now_the_right_time_to_build_something": str(answers[23]),
+        }
 
-        success_count = 0
-        failed_fields = []
+        # ONE API call to update ALL fields
+        field_response = requests.put(
+            f"{GHL_BASE_URL}/contacts/{ghl_id}",
+            headers=headers,
+            json={"customField": all_custom_fields}
+        )
 
-        for field_key, value in field_updates:
-
-            max_retries = 3
-            attempt = 0
-            updated = False
-
-            while attempt < max_retries and not updated:
-
-                field_response = requests.put(
-                    f"{GHL_BASE_URL}/contacts/{ghl_id}",
-                    headers=headers,
-                    json={"customField": {field_key: str(value)}}
-                )
-
-                if field_response.status_code == 200:
-                    success_count += 1
-                    updated = True
-                    print(f"✓ Updated {field_key}")
-                else:
-                    attempt += 1
-                    print(f"Retry {attempt}/{max_retries} for {field_key} — {field_response.status_code}")
-                    time.sleep(0.4)
-
-            if not updated:
-                failed_fields.append(field_key)
-                print(f"✗ Failed {field_key} after retries.")
-
-            time.sleep(0.4)
-
-        print(f"\nSuccessfully updated {success_count}/{len(field_updates)} GHL fields")
-
-        if failed_fields:
-            print(f"Failed fields: {', '.join(failed_fields)}")
+        if field_response.status_code == 200:
+            print("✓ Successfully updated all 24 Deep Dive fields in GHL")
+        else:
+            print(f"Failed to update fields: {field_response.status_code}")
+            print(f"Response: {field_response.text}")
+            
+            # If batch update fails, try to identify which fields are problematic
+            # This is just for debugging - remove in production
+            if field_response.status_code == 400:
+                print("Batch update failed. Error details:", field_response.json())
 
         if assigned:
             update_prospect_with_operator_info(prospect_id, assigned)

@@ -24,7 +24,7 @@ GHL_BASE_URL = "https://rest.gohighlevel.com/v1"
 DEEPDIVE_REDIRECT_URL = (
     os.getenv("DEEPDIVE_REDIRECT_URL")
     or os.getenv("NEXTSTEP_URL")
-    or "https://poweredbylegacycode.com/nextstep"
+    or "https://poweredbylegacycode.com/activation"
 )
 
 # Deep Dive = 24 questions (Q7–Q30)

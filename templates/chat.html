@@ -127,18 +127,45 @@
     const BACKEND_URL = "/submit";
 
     // =============================
-    // Q07–Q30 WITH customInputIndex ADDED FOR "Other"
+    // ANGUS INSTRUCTION MAP
     // =============================
+    const angusInstructions = {
+      0:  "“Give me the real lay of the land — just facts.”",
+      1:  "“Choose the one that matches how you REALLY show up.”",
+      2:  "“Pick the number that hits closest — no overthinking.”",
+      3:  "“Paint the real picture — clarity beats hype.”",
+      4:  "“Choose the one outcome that would shift your life the MOST.”",
+      5:  "“Tell me why it matters — truth, not polish.”",
+      6:  "“Describe your REAL schedule — the unfiltered version.”",
+      7:  "“Pick all the windows where you actually feel alive.”",
+      8:  "“List the anchors we need to respect — be specific.”",
+      9:  "“Select everything that genuinely keeps you locked in.”",
+      10: "“Pick the ones that actually derail you — honesty wins here.”",
+      11: "“Choose your real pattern when pressure hits.”",
+      12: "“Select every strength you actually lean on.”",
+      13: "“Pick the one skill that would move the needle fastest.”",
+      14: "“Choose the number that reflects your REAL follow-through.”",
+      15: "“Tell me exactly where that income would go.”",
+      16: "“Say the real thing — the one you usually don’t admit.”",
+      17: "“What quietly worries you most? Put it here.”",
+      18: "“Describe the version of you we’re building — no playing small.”",
+      19: "“Pick the one feeling you refuse to carry anymore.”",
+      20: "“Choose the feeling you want as your default operating mode.”",
+      21: "“Pick the approach that actually keeps you moving.”",
+      22: "“Select the tracking styles that would make you SHOW UP.”",
+      23: "“Tell me why now — the answer that hits your chest.”",
+      24: "“Drop the best email — the one you check daily.”"
+    };
 
+    // =============================
+    // STEPS
+    // =============================
     const steps = [
-
-      // Q07 (no Other)
       { type: "text",
         question: "Q07 — Where do you show up online right now — and how big is your audience there?",
         placeholder: "Be specific. Example: Facebook (800 friends), IG (350 followers)..."
       },
 
-      // Q08 (no Other)
       { type: "single",
         question: "Q08 — Social Presence Snapshot",
         options: [
@@ -152,31 +179,27 @@
         ]
       },
 
-      // Q09 (no Other)
       { type: "single",
         question: "Q09 — Content Confidence (1–10)",
         options: [
-  "1️⃣ 1 – I freeze up. Zero confidence.",
-  "2️⃣ 2 – I can post… but it feels awkward.",
-  "3️⃣ 3 – I can do it if someone tells me what to say.",
-  "4️⃣ 4 – Not great, not terrible — I need structure.",
-  "5️⃣ 5 – I could try with help.",
-  "6️⃣ 6 – I’m getting there, just need momentum.",
-  "7️⃣ 7 – I can show up, just need direction.",
-  "8️⃣ 8 – I'm comfortable.",
-  "9️⃣ 9 – I’m solid — I just need a system.",
-  "🔟 10 – Give me the plan, Commander."
-]
-
+          "1️⃣ 1 – I freeze up. Zero confidence.",
+          "2️⃣ 2 – I can post… but it feels awkward.",
+          "3️⃣ 3 – I can do it if someone tells me what to say.",
+          "4️⃣ 4 – Not great, not terrible — I need structure.",
+          "5️⃣ 5 – I could try with help.",
+          "6️⃣ 6 – I’m getting there, just need momentum.",
+          "7️⃣ 7 – I can show up, just need direction.",
+          "8️⃣ 8 – I'm comfortable.",
+          "9️⃣ 9 – I’m solid — I just need a system.",
+          "🔟 10 – Give me the plan, Commander."
+        ]
       },
 
-      // Q10 (text)
       { type: "text",
         question: "Q10 — 90-Day Definition of 'This WORKED'",
         placeholder: "Paint the picture. What does it worked look like?"
       },
 
-      // Q11 — HAS OTHER (index 7)
       { type: "single",
         question: "Q11 — Desired Outcome",
         options: [
@@ -192,19 +215,16 @@
         customInputIndex: 7
       },
 
-      // Q12 (text)
       { type: "text",
         question: "Q12 — Why That Outcome Matters",
         placeholder: "Why does this outcome matter emotionally or practically?"
       },
 
-      // Q13 (text)
       { type: "text",
         question: "Q13 — Weekly Schedule Reality",
         placeholder: "Describe your real weekly schedule. No sugarcoating."
       },
 
-      // Q14 (multi, no Other)
       { type: "multi",
         question: "Q14 — Highest Energy Windows",
         options: [
@@ -219,13 +239,11 @@
         ]
       },
 
-      // Q15 (text)
       { type: "text",
         question: "Q15 — Commitments We Must Build Around",
         placeholder: "Work, family, church, kids, sports, appointments, etc."
-      },
-
-      // Q16 — HAS OTHER (index 8)
+      }
+      // Q16 — multi with other
       { type: "multi",
         question: "Q16 — What Helps You Stay Consistent?",
         options: [
@@ -242,7 +260,7 @@
         customInputIndex: 8
       },
 
-      // Q17 — HAS OTHER (index 8)
+      // Q17 — multi with other
       { type: "multi",
         question: "Q17 — What Usually Pulls You Off Track?",
         options: [
@@ -258,7 +276,8 @@
         ],
         customInputIndex: 8
       },
-      // Q18 (no Other)
+
+      // Q18 — single
       { type: "single",
         question: "Q18 — Stress/Discouragement Response",
         options: [
@@ -272,7 +291,7 @@
         ]
       },
 
-      // Q19 — HAS OTHER (index 10)
+      // Q19 — multi with other
       { type: "multi",
         question: "Q19 — Strengths You Bring",
         options: [
@@ -291,7 +310,7 @@
         customInputIndex: 10
       },
 
-      // Q20 — HAS OTHER (index 8)
+      // Q20 — single with other
       { type: "single",
         question: "Q20 — Skill You Want the MOST Help With",
         options: [
@@ -308,7 +327,7 @@
         customInputIndex: 8
       },
 
-      // Q21 (no Other)
+      // Q21 — single
       { type: "single",
         question: "Q21 — System-Following Confidence (1–10)",
         options: [
@@ -317,31 +336,31 @@
         ]
       },
 
-      // Q22 (text)
+      // Q22 — text
       { type: "text",
         question: "Q22 — What Would $300–$800/month Support Right Now?",
         placeholder: "Where would that income go? Be real about it."
       },
 
-      // Q23 (text)
+      // Q23 — text
       { type: "text",
         question: "Q23 — Biggest Fear or Hesitation",
         placeholder: "What scares you or makes you hesitate? No emojis."
       },
 
-      // Q24 (text)
+      // Q24 — text
       { type: "text",
         question: "Q24 — If Nothing Changes in 6 Months, What Worries You Most?",
         placeholder: "Write what's true. This helps your coach lead you."
       },
 
-      // Q25 (text)
+      // Q25 — text
       { type: "text",
         question: "Q25 — Who You Want to Become in 12 Months",
         placeholder: "Describe the version of you we're building."
       },
 
-      // Q26 — HAS OTHER (index 7)
+      // Q26 — single with other
       { type: "single",
         question: "Q26 — One Feeling You NEVER Want Again",
         options: [
@@ -357,7 +376,7 @@
         customInputIndex: 7
       },
 
-      // Q27 (no Other)
+      // Q27 — single
       { type: "single",
         question: "Q27 — One Feeling You WANT as Your Baseline",
         options: [
@@ -366,7 +385,7 @@
         ]
       },
 
-      // Q28 (no Other)
+      // Q28 — single
       { type: "single",
         question: "Q28 — Preferred Accountability Style",
         options: [
@@ -379,7 +398,7 @@
         ]
       },
 
-      // Q29 (no Other)
+      // Q29 — multi
       { type: "multi",
         question: "Q29 — Preferred Tracking Style",
         options: [
@@ -393,13 +412,13 @@
         ]
       },
 
-      // Q30 (text)
+      // Q30 — text
       { type: "text",
         question: "Q30 — Why is NOW the right time to build something?",
         placeholder: "This is your emotional tattoo moment."
       },
 
-      // Final — Email
+      // Email
       { type: "email",
         question: "Finally — what's the BEST email for your 90-day Legacy Builder projection?"
       }
@@ -408,7 +427,6 @@
     // =============================
     // ENGINE
     // =============================
-
     const TOTAL_STEPS = steps.length;
     let currentStep = -1;
     let answers = [];
@@ -434,11 +452,21 @@
       if (l) l.remove();
     }
 
+    // =============================
+    // RENDER STEP
+    // =============================
     function renderStep() {
       currentStep++;
       if (currentStep >= TOTAL_STEPS) return;
 
       const step = steps[currentStep];
+
+      // SHOW INSTRUCTION FIRST
+      showBotMessage(
+        `<div style="color:#D4A72C; font-style:italic;">ANGUS: ${angusInstructions[currentStep]}</div>`
+      );
+
+      // THEN SHOW LOADING + QUESTION
       showLoading();
 
       setTimeout(() => {
@@ -451,16 +479,15 @@
 
         if (step.type === "single" || step.type === "multi") {
           let html = `<div class="options" id="options-${currentStep}">`;
-          step.options.forEach((opt, idx) => {
 
-            // NEW: Custom OTHER button
+          step.options.forEach((opt, idx) => {
             if (step.customInputIndex !== undefined && idx === step.customInputIndex) {
               html += `<button class="option-btn custom-other-btn" data-step="${currentStep}" data-type="${step.type}" data-index="${idx}">${opt}</button>`;
             } else {
               html += `<button class="option-btn" data-step="${currentStep}" data-type="${step.type}" data-index="${idx}">${opt}</button>`;
             }
-
           });
+
           html += `</div>`;
           chat.innerHTML += html;
 
@@ -491,11 +518,12 @@
       }, 700);
     }
 
+    // =============================
+    // EVENT LISTENERS
+    // =============================
     function setupEventListeners() {
 
-      // ===========================
-      // NEW: OTHER → Custom input
-      // ===========================
+      // CUSTOM OTHER BUTTON
       document.querySelectorAll('.custom-other-btn').forEach(btn => {
         btn.onclick = function() {
 
@@ -534,9 +562,7 @@
         };
       });
 
-      // ===========================
-      // Normal SINGLE + MULTI
-      // ===========================
+      // NORMAL OPTION BUTTONS
       document.querySelectorAll('.option-btn:not(.custom-other-btn)').forEach(btn => {
         btn.onclick = function() {
           const stepNum = parseInt(this.dataset.step);
@@ -560,8 +586,8 @@
           }
         };
       });
-      
-      // MULTI Next buttons
+
+      // MULTI SELECT NEXT
       document.querySelectorAll('.next-btn').forEach(btn => {
         if (btn.id.startsWith('next-')) {
           btn.onclick = function() {
@@ -585,8 +611,8 @@
             setTimeout(renderStep, 300);
           };
         }
-        
-        // Text Next
+
+        // TEXT NEXT
         if (btn.id.startsWith('text-next-')) {
           btn.onclick = function() {
             const stepNum = parseInt(this.id.replace('text-next-', ''));
@@ -606,8 +632,8 @@
           };
         }
       });
-      
-      // EMAIL Submit
+
+      // EMAIL SUBMIT
       const emailSubmit = document.getElementById('email-submit');
       if (emailSubmit) {
         emailSubmit.onclick = function() {
@@ -636,6 +662,9 @@
       }
     }
 
+    // =============================
+    // SUBMIT
+    // =============================
     function submitSurvey() {
 
       showLoading();
@@ -669,6 +698,9 @@
       });
     }
 
+    // =============================
+    // STARTUP
+    // =============================
     window.onload = () => {
       showBotMessage(
         "Alright legend — I'm ANGUS™. We're about to get precise. Answer honestly. This is for YOUR 90-day build."

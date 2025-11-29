@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+   <!DOCTYPE html>
 <html>
 <head>
   <title>ANGUS™ — Builder Deep Dive (Q07–Q30)</title>
@@ -127,6 +127,15 @@
     const BACKEND_URL = "/submit";
 
     // =============================
+    // FORCE SCROLL FIX
+    // =============================
+    function forceScroll() {
+      setTimeout(() => {
+        chat.scrollTop = chat.scrollHeight;
+      }, 50);
+    }
+
+    // =============================
     // ANGUS INSTRUCTION MAP
     // =============================
     const angusInstructions = {
@@ -161,6 +170,7 @@
     // STEPS
     // =============================
     const steps = [
+
       { type: "text",
         question: "Q07 — Where do you show up online right now — and how big is your audience there?",
         placeholder: "Be specific. Example: Facebook (800 friends), IG (350 followers)..."
@@ -242,7 +252,7 @@
       { type: "text",
         question: "Q15 — Commitments We Must Build Around",
         placeholder: "Work, family, church, kids, sports, appointments, etc."
-      }
+      },
       // Q16 — multi with other
       { type: "multi",
         question: "Q16 — What Helps You Stay Consistent?",
@@ -434,22 +444,23 @@
 
     function showBotMessage(msg) {
       chat.innerHTML += `<div class="message bot">${msg}</div>`;
-      chat.scrollTop = chat.scrollHeight;
+      forceScroll();
     }
     
     function showUserMessage(msg) {
       chat.innerHTML += `<div class="message user">${msg}</div>`;
-      chat.scrollTop = chat.scrollHeight;
+      forceScroll();
     }
     
     function showLoading() {
       chat.innerHTML += `<div class="message loading" id="loading">ANGUS is thinking</div>`;
-      chat.scrollTop = chat.scrollHeight;
+      forceScroll();
     }
     
     function hideLoading() {
       const l = document.getElementById("loading");
       if (l) l.remove();
+      forceScroll();
     }
 
     // =============================
@@ -461,12 +472,11 @@
 
       const step = steps[currentStep];
 
-      // SHOW INSTRUCTION FIRST
+      // ANGUS instruction
       showBotMessage(
         `<div style="color:#D4A72C; font-style:italic;">ANGUS: ${angusInstructions[currentStep]}</div>`
       );
 
-      // THEN SHOW LOADING + QUESTION
       showLoading();
 
       setTimeout(() => {
@@ -494,6 +504,8 @@
           if (step.type === "multi") {
             chat.innerHTML += `<button class="next-btn" id="next-${currentStep}">Next</button>`;
           }
+
+          forceScroll();
         }
 
         if (step.type === "text") {
@@ -502,6 +514,7 @@
               <textarea id="text-input-${currentStep}" placeholder="${step.placeholder || ''}"></textarea>
               <button class="next-btn" id="text-next-${currentStep}">Next</button>
             </div>`;
+          forceScroll();
         }
 
         if (step.type === "email") {
@@ -510,9 +523,9 @@
               <input id="email-input" type="text" placeholder="Enter your email address...">
               <button class="submit-btn" id="email-submit">Submit</button>
             </div>`;
+          forceScroll();
         }
 
-        chat.scrollTop = chat.scrollHeight;
         setupEventListeners();
         
       }, 700);
@@ -523,7 +536,7 @@
     // =============================
     function setupEventListeners() {
 
-      // CUSTOM OTHER BUTTON
+      // CUSTOM OTHER
       document.querySelectorAll('.custom-other-btn').forEach(btn => {
         btn.onclick = function() {
 
@@ -543,6 +556,7 @@
               <button class="next-btn" id="custom-next-${stepNum}">Next</button>
             </div>
           `;
+          forceScroll();
 
           document.getElementById(`custom-next-${stepNum}`).onclick = function() {
             const val = document.getElementById(`custom-input-${stepNum}`).value.trim();
@@ -565,6 +579,7 @@
       // NORMAL OPTION BUTTONS
       document.querySelectorAll('.option-btn:not(.custom-other-btn)').forEach(btn => {
         btn.onclick = function() {
+
           const stepNum = parseInt(this.dataset.step);
           const type = this.dataset.type;
           const index = parseInt(this.dataset.index);
@@ -587,7 +602,7 @@
         };
       });
 
-      // MULTI SELECT NEXT
+      // MULTI NEXT
       document.querySelectorAll('.next-btn').forEach(btn => {
         if (btn.id.startsWith('next-')) {
           btn.onclick = function() {

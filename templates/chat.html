@@ -127,18 +127,18 @@
     const BACKEND_URL = "/submit";
 
     // =============================
-    // Q07–Q30 EXACTLY AS PROVIDED
+    // Q07–Q30 WITH customInputIndex ADDED FOR "Other"
     // =============================
 
     const steps = [
 
-      // Q07
+      // Q07 (no Other)
       { type: "text",
         question: "Q07 — Where do you show up online right now — and how big is your audience there?",
         placeholder: "Be specific. Example: Facebook (800 friends), IG (350 followers)..."
       },
 
-      // Q08
+      // Q08 (no Other)
       { type: "single",
         question: "Q08 — Social Presence Snapshot",
         options: [
@@ -152,7 +152,7 @@
         ]
       },
 
-      // Q09
+      // Q09 (no Other)
       { type: "single",
         question: "Q09 — Content Confidence (1–10)",
         options: [
@@ -169,13 +169,13 @@
         ]
       },
 
-      // Q10
+      // Q10 (text)
       { type: "text",
         question: "Q10 — 90-Day Definition of 'This WORKED'",
         placeholder: "Paint the picture. What does it worked look like?"
       },
 
-      // Q11
+      // Q11 — HAS OTHER (index 7)
       { type: "single",
         question: "Q11 — Desired Outcome",
         options: [
@@ -187,22 +187,23 @@
           "🎯 More purpose",
           "🤝 More community",
           "✍️ Something else (type in)"
-        ]
+        ],
+        customInputIndex: 7
       },
 
-      // Q12
+      // Q12 (text)
       { type: "text",
         question: "Q12 — Why That Outcome Matters",
         placeholder: "Why does this outcome matter emotionally or practically?"
       },
 
-      // Q13
+      // Q13 (text)
       { type: "text",
         question: "Q13 — Weekly Schedule Reality",
         placeholder: "Describe your real weekly schedule. No sugarcoating."
       },
 
-      // Q14
+      // Q14 (multi, no Other)
       { type: "multi",
         question: "Q14 — Highest Energy Windows",
         options: [
@@ -217,13 +218,13 @@
         ]
       },
 
-      // Q15
+      // Q15 (text)
       { type: "text",
         question: "Q15 — Commitments We Must Build Around",
         placeholder: "Work, family, church, kids, sports, appointments, etc."
       },
 
-      // Q16
+      // Q16 — HAS OTHER (index 8)
       { type: "multi",
         question: "Q16 — What Helps You Stay Consistent?",
         options: [
@@ -236,10 +237,11 @@
           "⏱ Deadlines",
           "🔥 Momentum",
           "✍️ Other"
-        ]
+        ],
+        customInputIndex: 8
       },
 
-      // Q17
+      // Q17 — HAS OTHER (index 8)
       { type: "multi",
         question: "Q17 — What Usually Pulls You Off Track?",
         options: [
@@ -252,10 +254,10 @@
           "⏰ Too many responsibilities",
           "💭 Not seeing results fast enough",
           "✍️ Other"
-        ]
+        ],
+        customInputIndex: 8
       },
-
-      // Q18
+      // Q18 (no Other)
       { type: "single",
         question: "Q18 — Stress/Discouragement Response",
         options: [
@@ -269,7 +271,7 @@
         ]
       },
 
-      // Q19
+      // Q19 — HAS OTHER (index 10)
       { type: "multi",
         question: "Q19 — Strengths You Bring",
         options: [
@@ -284,10 +286,11 @@
           "🔊 Storytelling",
           "🌱 Leadership potential",
           "✍️ Other"
-        ]
+        ],
+        customInputIndex: 10
       },
 
-      // Q20
+      // Q20 — HAS OTHER (index 8)
       { type: "single",
         question: "Q20 — Skill You Want the MOST Help With",
         options: [
@@ -300,51 +303,44 @@
           "🎯 Staying accountable",
           "🧩 Understanding the business flow",
           "✨ Something else"
-        ]
+        ],
+        customInputIndex: 8
       },
 
-      // Q21
+      // Q21 (no Other)
       { type: "single",
         question: "Q21 — System-Following Confidence (1–10)",
         options: [
-          "1️⃣ 1",
-          "2️⃣ 2",
-          "3️⃣ 3",
-          "4️⃣ 4",
-          "5️⃣ 5",
-          "6️⃣ 6",
-          "7️⃣ 7",
-          "8️⃣ 8",
-          "9️⃣ 9",
-          "🔟 10"
+          "1️⃣ 1","2️⃣ 2","3️⃣ 3","4️⃣ 4","5️⃣ 5",
+          "6️⃣ 6","7️⃣ 7","8️⃣ 8","9️⃣ 9","🔟 10"
         ]
       },
 
-      // Q22
+      // Q22 (text)
       { type: "text",
         question: "Q22 — What Would $300–$800/month Support Right Now?",
         placeholder: "Where would that income go? Be real about it."
       },
 
-      // Q23
+      // Q23 (text)
       { type: "text",
         question: "Q23 — Biggest Fear or Hesitation",
         placeholder: "What scares you or makes you hesitate? No emojis."
       },
 
-      // Q24
+      // Q24 (text)
       { type: "text",
         question: "Q24 — If Nothing Changes in 6 Months, What Worries You Most?",
         placeholder: "Write what's true. This helps your coach lead you."
       },
 
-      // Q25
+      // Q25 (text)
       { type: "text",
         question: "Q25 — Who You Want to Become in 12 Months",
         placeholder: "Describe the version of you we're building."
       },
 
-      // Q26
+      // Q26 — HAS OTHER (index 7)
       { type: "single",
         question: "Q26 — One Feeling You NEVER Want Again",
         options: [
@@ -356,25 +352,20 @@
           "🥱 Burnout",
           "🧍‍♂️ Feeling alone",
           "✍️ Other"
-        ]
+        ],
+        customInputIndex: 7
       },
 
-      // Q27
+      // Q27 (no Other)
       { type: "single",
         question: "Q27 — One Feeling You WANT as Your Baseline",
         options: [
-          "💪 Confidence",
-          "✨ Clarity",
-          "🔋 Energy",
-          "🌼 Peace",
-          "🚀 Momentum",
-          "🎯 Purpose",
-          "😄 Joy",
-          "🔥 Drive"
+          "💪 Confidence","✨ Clarity","🔋 Energy","🌼 Peace",
+          "🚀 Momentum","🎯 Purpose","😄 Joy","🔥 Drive"
         ]
       },
 
-      // Q28
+      // Q28 (no Other)
       { type: "single",
         question: "Q28 — Preferred Accountability Style",
         options: [
@@ -387,7 +378,7 @@
         ]
       },
 
-      // Q29
+      // Q29 (no Other)
       { type: "multi",
         question: "Q29 — Preferred Tracking Style",
         options: [
@@ -401,20 +392,20 @@
         ]
       },
 
-      // Q30
+      // Q30 (text)
       { type: "text",
         question: "Q30 — Why is NOW the right time to build something?",
         placeholder: "This is your emotional tattoo moment."
       },
 
-      // Email
+      // Final — Email
       { type: "email",
         question: "Finally — what's the BEST email for your 90-day Legacy Builder projection?"
       }
     ];
 
     // =============================
-    // WORKING ENGINE 
+    // ENGINE
     // =============================
 
     const TOTAL_STEPS = steps.length;
@@ -444,7 +435,6 @@
 
     function renderStep() {
       currentStep++;
-      
       if (currentStep >= TOTAL_STEPS) return;
 
       const step = steps[currentStep];
@@ -461,7 +451,14 @@
         if (step.type === "single" || step.type === "multi") {
           let html = `<div class="options" id="options-${currentStep}">`;
           step.options.forEach((opt, idx) => {
-            html += `<button class="option-btn" data-step="${currentStep}" data-type="${step.type}" data-index="${idx}">${opt}</button>`;
+
+            // NEW: Custom OTHER button
+            if (step.customInputIndex !== undefined && idx === step.customInputIndex) {
+              html += `<button class="option-btn custom-other-btn" data-step="${currentStep}" data-type="${step.type}" data-index="${idx}">${opt}</button>`;
+            } else {
+              html += `<button class="option-btn" data-step="${currentStep}" data-type="${step.type}" data-index="${idx}">${opt}</button>`;
+            }
+
           });
           html += `</div>`;
           chat.innerHTML += html;
@@ -494,8 +491,52 @@
     }
 
     function setupEventListeners() {
-      // Option buttons
-      document.querySelectorAll('.option-btn').forEach(btn => {
+
+      // ===========================
+      // NEW: OTHER → Custom input
+      // ===========================
+      document.querySelectorAll('.custom-other-btn').forEach(btn => {
+        btn.onclick = function() {
+
+          const stepNum = parseInt(this.dataset.step);
+          const step = steps[stepNum];
+          const optionText = step.options[step.customInputIndex];
+
+          showUserMessage(optionText);
+
+          document.getElementById(`options-${stepNum}`).remove();
+          const nextBtn = document.getElementById(`next-${stepNum}`);
+          if (nextBtn) nextBtn.remove();
+
+          chat.innerHTML += `
+            <div id="custom-block-${stepNum}">
+              <textarea id="custom-input-${stepNum}" placeholder="Type your exact answer..."></textarea>
+              <button class="next-btn" id="custom-next-${stepNum}">Next</button>
+            </div>
+          `;
+
+          document.getElementById(`custom-next-${stepNum}`).onclick = function() {
+            const val = document.getElementById(`custom-input-${stepNum}`).value.trim();
+            if (!val) {
+              showBotMessage("Type your answer to continue.");
+              return;
+            }
+
+            const combined = `${optionText} — ${val}`;
+
+            showUserMessage(val);
+            answers.push(combined);
+
+            document.getElementById(`custom-block-${stepNum}`).remove();
+            setTimeout(renderStep, 300);
+          };
+        };
+      });
+
+      // ===========================
+      // Normal SINGLE + MULTI
+      // ===========================
+      document.querySelectorAll('.option-btn:not(.custom-other-btn)').forEach(btn => {
         btn.onclick = function() {
           const stepNum = parseInt(this.dataset.step);
           const type = this.dataset.type;
@@ -519,7 +560,7 @@
         };
       });
       
-      // Multi-select Next buttons
+      // MULTI Next buttons
       document.querySelectorAll('.next-btn').forEach(btn => {
         if (btn.id.startsWith('next-')) {
           btn.onclick = function() {
@@ -544,7 +585,7 @@
           };
         }
         
-        // Text Next buttons
+        // Text Next
         if (btn.id.startsWith('text-next-')) {
           btn.onclick = function() {
             const stepNum = parseInt(this.id.replace('text-next-', ''));
@@ -565,14 +606,13 @@
         }
       });
       
-      // Email submit button
+      // EMAIL Submit
       const emailSubmit = document.getElementById('email-submit');
       if (emailSubmit) {
         emailSubmit.onclick = function() {
           const emailInput = document.getElementById("email-input");
           const email = emailInput.value.trim();
           
-          // Basic email validation
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           
           if (!email) {
@@ -596,9 +636,9 @@
     }
 
     function submitSurvey() {
+
       showLoading();
 
-      // Ensure answers is an array
       if (!Array.isArray(answers)) answers = [];
 
       fetch(BACKEND_URL, {
@@ -606,13 +646,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
-          answers: answers  // 24 answers for Q07-Q30
+          answers: answers
         })
       })
       .then(res => {
-        if (!res.ok) {
-          throw new Error(`Server responded with status ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
         return res.json();
       })
       .then(data => {

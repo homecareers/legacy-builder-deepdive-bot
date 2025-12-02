@@ -19,7 +19,14 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not (AIRTABLE_API_KEY and AIRTABLE_BASE_ID and OPENAI_API_KEY):
     raise RuntimeError("Missing Airtable or OpenAI environment variables")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+# FIX: Initialize OpenAI client without any proxy parameters
+client = OpenAI(
+    api_key=OPENAI_API_KEY,
+    # Explicitly set to None to avoid any proxy issues
+    http_client=None,
+    max_retries=2,
+    timeout=60.0
+)
 
 # -------- Airtable Helpers -------- #
 
@@ -79,7 +86,7 @@ def _deepdive_to_bullet_block(fields: dict) -> str:
 
 def _call_gpt(system_prompt: str, user_prompt: str) -> str:
     resp = client.chat.completions.create(
-        model="gpt-4.1-preview",   # 🔥 browsing-enabled, modern
+        model="gpt-4o",  # Updated to use standard model name
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

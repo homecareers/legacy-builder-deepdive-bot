@@ -3,8 +3,19 @@ import datetime
 import requests
 import urllib.parse
 from playwright.sync_api import sync_playwright
-from openai import OpenAI
 import base64
+
+# Try different OpenAI import methods to handle version issues
+try:
+    from openai import OpenAI
+    # Try to initialize with just api_key
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    client = OpenAI(api_key=OPENAI_API_KEY)
+except TypeError:
+    # Fallback for older OpenAI library versions
+    import openai
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    client = None
 
 # -------- CONFIG -------- #
 
@@ -18,9 +29,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 if not (AIRTABLE_API_KEY and AIRTABLE_BASE_ID and OPENAI_API_KEY):
     raise RuntimeError("Missing Airtable or OpenAI environment variables")
-
-# FIX: Simple initialization with just the API key
-client = OpenAI(api_key=OPENAI_API_KEY)
 
 # -------- Airtable Helpers -------- #
 
@@ -79,16 +87,31 @@ def _deepdive_to_bullet_block(fields: dict) -> str:
     return "\n".join(lines)
 
 def _call_gpt(system_prompt: str, user_prompt: str) -> str:
-    resp = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.7,
-        max_tokens=1800,
-    )
-    return resp.choices[0].message.content
+    if client:
+        # New OpenAI library style
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.7,
+            max_tokens=1800,
+        )
+        return resp.choices[0].message.content
+    else:
+        # Old OpenAI library style
+        import openai
+        resp = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.7,
+            max_tokens=1800,
+        )
+        return resp.choices[0].message.content
 
 def generate_prospect_report_text(prospect: dict, deepdive: dict) -> str:
     name = prospect.get("Prospect Name") or "this client"
@@ -308,3 +331,4 @@ def generate_and_email_reports_for_legacy_code(legacy_code: str):
         "consult_pdf": consult_pdf_path,
         "airtable_record": record_id,
     }
+```

@@ -331,4 +331,3 @@ def generate_and_email_reports_for_legacy_code(legacy_code: str):
         "consult_pdf": consult_pdf_path,
         "airtable_record": record_id,
     }
-```

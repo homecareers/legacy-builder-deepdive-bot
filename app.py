@@ -199,7 +199,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
     return prospect_id
 
 
-# ---------------------- GHL SYNC — BATCH UPDATE, NO DELAYS ---------------------- #
+# ---------------------- GHL SYNC — BATCH UPDATE ---------------------- #
 
 def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
@@ -208,7 +208,6 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             "Content-Type": "application/json",
         }
 
-        # Look up the contact
         lookup = requests.get(
             f"{GHL_BASE_URL}/contacts/lookup",
             headers=headers,
@@ -232,17 +231,12 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             or contact.get("assignedTo")
         )
 
-        print(f"Found contact ID: {ghl_id} for email: {email}")
-
-        # Tag for Deep Dive completion
-        tag_response = requests.put(
+        requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
             json={"tags": ["legacy deep dive submitted"]},
         )
-        print(f"Tag Update Status: {tag_response.status_code}")
 
-        # ✅ BATCH UPDATE - All fields in ONE API call with corrected field names
         all_custom_fields = {
             "07_where_do_you_show_up_online_right_now": str(answers[0]),
             "q8_social_presence_snapshot": str(answers[1]),
@@ -260,33 +254,21 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             "q20_skill_you_want_the_most_help_with": str(answers[13]),
             "q21_systemfollowing_confidence_110": str(answers[14]),
             "q22_what_would_300800month_support_right_now": str(answers[15]),
-            "q23__biggest_fear_or_hesitation": str(answers[16]),  # Fixed: double underscore
-            "q24__if_nothing_changes_in_6_months_what_worries_you_most": str(answers[17]),  # Fixed: double underscore + _most
+            "q23__biggest_fear_or_hesitation": str(answers[16]),
+            "q24__if_nothing_changes_in_6_months_what_worries_you_most": str(answers[17]),
             "q25_who_you_want_to_become_in_12_months": str(answers[18]),
-            "q26__one_feeling_you_never_want_again": str(answers[19]),  # Fixed: double underscore
-            "q27__one_feeling_you_want_as_your_baseline": str(answers[20]),  # Fixed: double underscore
+            "q26__one_feeling_you_never_want_again": str(answers[19]),
+            "q27__one_feeling_you_want_as_your_baseline": str(answers[20]),
             "q28_preferred_accountability_style": str(answers[21]),
             "q29_preferred_tracking_style": str(answers[22]),
             "q30_why_is_now_the_right_time_to_build_something": str(answers[23]),
         }
 
-        # ONE API call to update ALL fields
-        field_response = requests.put(
+        requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
             json={"customField": all_custom_fields}
         )
-
-        if field_response.status_code == 200:
-            print("✓ Successfully updated all 24 Deep Dive fields in GHL")
-        else:
-            print(f"Failed to update fields: {field_response.status_code}")
-            print(f"Response: {field_response.text}")
-            
-            # If batch update fails, try to identify which fields are problematic
-            # This is just for debugging - remove in production
-            if field_response.status_code == 400:
-                print("Batch update failed. Error details:", field_response.json())
 
         if assigned:
             update_prospect_with_operator_info(prospect_id, assigned)
@@ -316,7 +298,6 @@ def submit():
         if not isinstance(answers, list):
             answers = []
 
-        # Guarantee 24 answers
         while len(answers) < DEEPDIVE_QUESTION_COUNT:
             answers.append("No response")
 
@@ -334,12 +315,12 @@ def submit():
         )
 
         # 🔥 Trigger PDF generation + email to sponsor
-try:
-    generate_and_email_reports_for_legacy_code(legacy_code)
-except Exception as e:
-    print("PDF Generation Error:", e)
+        try:
+            generate_and_email_reports_for_legacy_code(legacy_code)
+        except Exception as e:
+            print("PDF Generation Error:", e)
 
-
+        # IMPORTANT — correct indentation (this is the fix)
         if assigned_user_id:
             redirect_url = f"{DEEPDIVE_REDIRECT_URL}?uid={assigned_user_id}"
         else:

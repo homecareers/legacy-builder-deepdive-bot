@@ -94,7 +94,7 @@ def update_prospect_with_operator_info(prospect_id: str, ghl_user_id: str):
         print(f"Error updating prospect with operator info: {e}")
 
 
-# ---------------------- PROSPECT HANDLING (FIND BY EMAIL, NO NEW ROW) ---------------------- #
+# ---------------------- PROSPECT HANDLING ---------------------- #
 
 def get_or_create_prospect(email: str):
 
@@ -105,7 +105,7 @@ def get_or_create_prospect(email: str):
     r.raise_for_status()
     data = r.json()
 
-    # ✔️ Record exists — use this row
+    # ✔️ Existing row
     if data.get("records"):
         rec = data["records"][0]
         rec_id = rec["id"]
@@ -127,14 +127,13 @@ def get_or_create_prospect(email: str):
 
         return legacy_code, rec_id
 
-    # ❗ Record does NOT exist, create it (only if truly missing)
+    # ❗ Create new if none exists
     payload = {"fields": {"Prospect Email": email}}
     r = requests.post(_url(HQ_TABLE), headers=_h(), json=payload)
     r.raise_for_status()
     rec = r.json()
     rec_id = rec["id"]
 
-    # Assign legacy code
     auto = rec.get("fields", {}).get("AutoNum")
     if auto is None:
         auto_data = requests.get(_url(HQ_TABLE, rec_id), headers=_h()).json()
@@ -150,7 +149,7 @@ def get_or_create_prospect(email: str):
     return legacy_code, rec_id
 
 
-# ---------------------- SAVE DEEP DIVE — ORIGINAL AIRTABLE LOGIC ---------------------- #
+# ---------------------- SAVE DEEP DIVE ---------------------- #
 
 def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list):
 
@@ -199,7 +198,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
     return prospect_id
 
 
-# ---------------------- GHL SYNC — BATCH UPDATE ---------------------- #
+# ---------------------- GHL SYNC ---------------------- #
 
 def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
@@ -231,12 +230,14 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
             or contact.get("assignedTo")
         )
 
+        # Tag for Deep Dive completion
         requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
             json={"tags": ["legacy deep dive submitted"]},
         )
 
+        # Batch field update
         all_custom_fields = {
             "07_where_do_you_show_up_online_right_now": str(answers[0]),
             "q8_social_presence_snapshot": str(answers[1]),
@@ -298,6 +299,7 @@ def submit():
         if not isinstance(answers, list):
             answers = []
 
+        # Guarantee 24 answers
         while len(answers) < DEEPDIVE_QUESTION_COUNT:
             answers.append("No response")
 
@@ -314,13 +316,12 @@ def submit():
             prospect_id=prospect_id
         )
 
-        # 🔥 Trigger PDF generation + email to sponsor
+        # 🔥 Generate PDFs + Upload to Airtable (no email)
         try:
             generate_and_email_reports_for_legacy_code(legacy_code)
         except Exception as e:
             print("PDF Generation Error:", e)
 
-        # IMPORTANT — correct indentation (this is the fix)
         if assigned_user_id:
             redirect_url = f"{DEEPDIVE_REDIRECT_URL}?uid={assigned_user_id}"
         else:

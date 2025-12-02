@@ -5,6 +5,8 @@ import datetime
 import urllib.parse
 from flask_cors import CORS
 
+from reports import generate_and_email_reports_for_legacy_code
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
@@ -330,6 +332,13 @@ def submit():
             legacy_code=legacy_code,
             prospect_id=prospect_id
         )
+
+        # 🔥 Trigger PDF generation + email to sponsor
+try:
+    generate_and_email_reports_for_legacy_code(legacy_code)
+except Exception as e:
+    print("PDF Generation Error:", e)
+
 
         if assigned_user_id:
             redirect_url = f"{DEEPDIVE_REDIRECT_URL}?uid={assigned_user_id}"

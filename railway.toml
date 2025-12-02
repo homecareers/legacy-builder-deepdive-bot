@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+
+[phases.install]
+commands = [
+  "pip install playwright",
+  "python -m playwright install chromium"
+]

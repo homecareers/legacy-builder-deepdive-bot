@@ -5,7 +5,7 @@ import datetime
 import urllib.parse
 from flask_cors import CORS
 
-from reports import generate_and_email_reports_for_legacy_code
+from reports import generate_reports_for_email_or_legacy_code
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})

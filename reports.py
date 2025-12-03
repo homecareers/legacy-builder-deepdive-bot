@@ -17,7 +17,7 @@ SURVEY_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Survey Responses"
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")  # e.g. https://legacy-builder-deepdive-bot.up.railway.app
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4.1-mini"
+OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
 client = OpenAI()
 

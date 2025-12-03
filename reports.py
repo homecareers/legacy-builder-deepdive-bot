@@ -6,6 +6,11 @@ from pathlib import Path
 
 import requests
 from playwright.sync_api import sync_playwright
+
+# Fix Railway proxy issues BEFORE importing OpenAI
+for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+    os.environ.pop(key, None)
+
 from openai import OpenAI
 
 # ---------------------- CONFIG ---------------------- #
@@ -15,17 +20,18 @@ AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
 SURVEY_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Survey Responses"
 
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")  # e.g. https://legacy-builder-deepdive-bot.up.railway.app
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
-# Fix for Railway proxy issues
-import os as _os
-for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']:
-    _os.environ.pop(key, None)
+# Simple OpenAI client initialization
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")
+
+def _airtable_headers():
+    return {
+        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
+        "Content-Type": "application/json",
     }
 
 

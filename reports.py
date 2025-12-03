@@ -1,333 +1,372 @@
 import os
+import json
 import datetime
-import requests
 import urllib.parse
+import tempfile
+from pathlib import Path
+
+import requests
 from playwright.sync_api import sync_playwright
-import base64
+from openai import OpenAI
 
-# Try different OpenAI import methods to handle version issues
-try:
-    from openai import OpenAI
-    # Try to initialize with just api_key
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    client = OpenAI(api_key=OPENAI_API_KEY)
-except TypeError:
-    # Fallback for older OpenAI library versions
-    import openai
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    client = None
-
-# -------- CONFIG -------- #
+# ---------------------- CONFIG ---------------------- #
 
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
-PROSPECTS_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Prospects"
-DEEPDIVE_TABLE = os.getenv("AIRTABLE_DEEPDIVE_TABLE") or "Deep Dive Responses"
+SURVEY_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Survey Responses"
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")  # e.g. https://legacy-builder-deepdive-bot.up.railway.app
 
-if not (AIRTABLE_API_KEY and AIRTABLE_BASE_ID and OPENAI_API_KEY):
-    raise RuntimeError("Missing Airtable or OpenAI environment variables")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4.1-mini"
 
-# -------- Airtable Helpers -------- #
+client = OpenAI()
 
-def _h():
+
+def _airtable_headers():
     return {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
         "Content-Type": "application/json",
     }
 
-def _url(table, rec_id=None, params=None):
+
+def _airtable_url(table: str, record_id: str | None = None, params: dict | None = None) -> str:
     base = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(table)}"
-    if rec_id:
-        return f"{base}/{rec_id}"
+    if record_id:
+        return f"{base}/{record_id}"
     if params:
         return f"{base}?{urllib.parse.urlencode(params)}"
     return base
 
-def get_record_by_legacy_code(table: str, legacy_code: str):
-    formula = f"{{Legacy Code}} = '{legacy_code}'"
-    params = {
-        "filterByFormula": formula,
-        "maxRecords": 1,
-    }
 
-    if table == DEEPDIVE_TABLE:
-        params["sort[0][field]"] = "Date Submitted"
-        params["sort[0][direction]"] = "desc"
+# ---------------------- AIRTABLE LOOKUP ---------------------- #
 
-    r = requests.get(_url(table, params=params), headers=_h())
-    r.raise_for_status()
-    data = r.json()
-    records = data.get("records", [])
-    return records[0] if records else None
+def find_survey_row(prospect_email: str | None = None,
+                    legacy_code: str | None = None) -> dict | None:
+    """
+    Find the ONE Survey Responses row for this prospect.
+    Priority: email + legacy -> email -> legacy.
+    """
+    if not prospect_email and not legacy_code:
+        print("⚠️ find_survey_row: no email or legacy_code provided.")
+        return None
 
-def get_prospect_and_deepdive(legacy_code: str):
-    prospect_rec = get_record_by_legacy_code(PROSPECTS_TABLE, legacy_code)
-    if not prospect_rec:
-        raise ValueError(f"No Prospect found with Legacy Code {legacy_code}")
+    formulas = []
 
-    deepdive_rec = get_record_by_legacy_code(DEEPDIVE_TABLE, legacy_code)
-    if not deepdive_rec:
-        raise ValueError(f"No Deep Dive record found for Legacy Code {legacy_code}")
+    if prospect_email and legacy_code:
+        formulas.append(f"AND({{Prospect Email}} = '{prospect_email}', {{Legacy Code}} = '{legacy_code}')")
+    if prospect_email:
+        formulas.append(f"{{Prospect Email}} = '{prospect_email}'")
+    if legacy_code:
+        formulas.append(f"{{Legacy Code}} = '{legacy_code}'")
 
-    return prospect_rec["fields"], deepdive_rec["fields"], prospect_rec["id"]
+    for formula in formulas:
+        url = _airtable_url(
+            SURVEY_TABLE,
+            params={"filterByFormula": formula, "maxRecords": 1, "pageSize": 1},
+        )
+        try:
+            r = requests.get(url, headers=_airtable_headers(), timeout=20)
+            r.raise_for_status()
+            data = r.json()
+            records = data.get("records", [])
+            if records:
+                return records[0]
+        except Exception as e:
+            print(f"❌ Airtable lookup error with formula [{formula}]: {e}")
 
-# -------- GPT Content Generation -------- #
+    print("⚠️ No Survey Responses row found for given keys.")
+    return None
 
-def _deepdive_to_bullet_block(fields: dict) -> str:
-    lines = []
-    for k, v in fields.items():
-        if k in ("Legacy Code", "Prospects", "Created", "Date Submitted"):
-            continue
-        if not v:
-            continue
-        lines.append(f"- {k}: {v}")
-    return "\n".join(lines)
 
-def _call_gpt(system_prompt: str, user_prompt: str) -> str:
-    if client:
-        # New OpenAI library style
+def extract_q_block(fields: dict) -> dict:
+    """
+    Build a clean { 'Q1': value, ..., 'Q30': value } dict
+    by matching any Airtable field that *starts with* 'Q1', 'Q2', etc.
+    """
+    q_data: dict[str, str | None] = {}
+
+    for i in range(1, 31):
+        prefix = f"Q{i}"
+        value = None
+        for k, v in fields.items():
+            if k.startswith(prefix):
+                value = v
+                break
+        q_data[prefix] = value
+
+    return q_data
+
+
+# ---------------------- OPENAI HELPERS ---------------------- #
+
+def call_openai(messages: list[dict], temperature: float = 0.7) -> str:
+    """
+    Wrapper around OpenAI chat.completions for 1.x client.
+    """
+    try:
         resp = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.7,
-            max_tokens=1800,
+            model=OPENAI_MODEL,
+            messages=messages,
+            temperature=temperature,
         )
-        return resp.choices[0].message.content
-    else:
-        # Old OpenAI library style
-        import openai
-        resp = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.7,
-            max_tokens=1800,
-        )
-        return resp.choices[0].message.content
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"❌ OpenAI error: {e}")
+        return "Report generation failed. (Model error.)"
 
-def generate_prospect_report_text(prospect: dict, deepdive: dict) -> str:
-    name = prospect.get("Prospect Name") or "this client"
-    gem = deepdive.get("Q6 Business Style (GEM)") or deepdive.get("GEM Type") or ""
-    bullets = _deepdive_to_bullet_block(deepdive)
 
-    system_prompt = """
-You are a strategic Herbalife-aligned business coach.
-Stay 100% compliant: do not make income guarantees, health claims, or disease language.
-Focus on behaviors, routines, DMO, and aligned expectations.
+def build_prospect_prompt(meta: dict, q_data: dict) -> list[dict]:
+    """
+    Prompt for the 90-Day Business Blueprint (prospect-facing).
+    """
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are an elite business and behavior strategist. "
+                "You create precise, practical 90-day action blueprints for new builders. "
+                "Tone: grounded, confident, direct, no fluff. "
+                "Write in second-person ('you'). "
+                "Focus on clarity, priorities, and behavior systems — not hype."
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "meta": meta,
+                    "questions": q_data,
+                    "instructions": (
+                        "Using ALL available answers from Q1–Q30, create a 90-day business blueprint. "
+                        "Structure with clear sections, like:\n"
+                        "1) Snapshot of Where You Are Now\n"
+                        "2) 90-Day Targets\n"
+                        "3) Weekly Non-Negotiables\n"
+                        "4) Daily Operating System\n"
+                        "5) Risk Factors & How You'll Handle Them\n"
+                        "6) Check-in Milestones\n\n"
+                        "Keep it readable, concrete, and implementable."
+                    ),
+                },
+                indent=2,
+            ),
+        },
+    ]
+
+
+def build_coach_prompt(meta: dict, q_data: dict) -> list[dict]:
+    """
+    Prompt for the Consultation Briefing (coach-facing).
+    """
+    gem_style = q_data.get("Q6") or ""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a senior builder-coach preparing a consultation briefing for another coach. "
+                "Tone: tactical, candid, zero fluff. "
+                "Write in third-person about the prospect. "
+                "Highlight GEM-style clues, red flags, leverage points, and coaching strategy."
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "meta": meta,
+                    "questions": q_data,
+                    "gem_hint": gem_style,
+                    "instructions": (
+                        "Create a consultation briefing with sections:\n"
+                        "1) Identity Snapshot (who they are, GEM-style, story)\n"
+                        "2) Motivation & Real Drivers (Q1, others)\n"
+                        "3) Capacity & Constraints (time, life context, bandwidth)\n"
+                        "4) Confidence, Patterns & Past Friction (what derailed them before)\n"
+                        "5) Recommended Coaching Angle (how to lead them in first 90 days)\n"
+                        "6) Key Questions to Ask Live\n\n"
+                        "Assume this is used right before a 30–45 min consult."
+                    ),
+                },
+                indent=2,
+            ),
+        },
+    ]
+
+
+# ---------------------- HTML → PDF ---------------------- #
+
+def html_shell(title: str, legacy_code: str | None, body_html: str) -> str:
+    meta_line = f"{title}"
+    if legacy_code:
+        meta_line += f" · {legacy_code}"
+
+    generated_ts = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
+    return f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<style>
+  body {{
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    background: #05060a;
+    color: #f5f5f5;
+    margin: 0;
+    padding: 32px;
+  }}
+  .card {{
+    max-width: 800px;
+    margin: 0 auto;
+    background: #0b0c10;
+    border-radius: 18px;
+    padding: 28px 30px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.85);
+    border: 1px solid #222;
+  }}
+  h1 {{
+    font-size: 26px;
+    margin: 0 0 6px;
+  }}
+  .meta {{
+    font-size: 12px;
+    color: #c3c3c3;
+    margin-bottom: 16px;
+  }}
+  h2 {{
+    font-size: 18px;
+    margin-top: 22px;
+    margin-bottom: 6px;
+    color: #f7cb4e;
+  }}
+  p, li {{
+    font-size: 13px;
+    line-height: 1.6;
+  }}
+  ul {{
+    padding-left: 18px;
+  }}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>{title}</h1>
+    <div class="meta">
+      {meta_line}<br>
+      Generated: {generated_ts}
+    </div>
+    {body_html}
+  </div>
+</body>
+</html>
     """.strip()
 
-    user_prompt = f"""
-Prospect: {name}
-GEM Style: {gem}
 
-Deep Dive:
-{bullets}
-
-Create a 90-Day Business Blueprint personalized to their answers and GEM style.
+def markdownish_to_html(text: str) -> str:
     """
-
-    return _call_gpt(system_prompt, user_prompt)
-
-def generate_consult_report_text(prospect: dict, deepdive: dict) -> str:
-    name = prospect.get("Prospect Name") or "this prospect"
-    email = prospect.get("Prospect Email") or ""
-    gem = deepdive.get("Q6 Business Style (GEM)") or deepdive.get("GEM Type") or ""
-    bullets = _deepdive_to_bullet_block(deepdive)
-
-    system_prompt = """
-You are advising a sponsor on how to lead a personalized 1:1 consultation.
-No hype. No promises. Clear, tactical, GEM-specific coaching.
+    Very light transformer: split on blank lines, wrap in <p>. Leave headings as-is.
+    (Good enough for this context.)
     """
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    html_parts = []
+    for p in paragraphs:
+        if p.startswith("# "):
+            html_parts.append(f"<h2>{p[2:].strip()}</h2>")
+        else:
+            html_parts.append(f"<p>{p}</p>")
+    return "\n".join(html_parts)
 
-    user_prompt = f"""
-Prospect Name: {name}
-Prospect Email: {email}
-GEM: {gem}
 
-Deep Dive Data:
-{bullets}
-
-Create a sponsor-only Consultation Briefing that guides the call step-by-step.
-    """
-
-    return _call_gpt(system_prompt, user_prompt)
-
-# -------- HTML templates -------- #
-
-def build_prospect_html(prospect: dict, legacy_code: str, body: str) -> str:
-    name = prospect.get("Prospect Name") or "Your 90-Day Blueprint"
-    today = datetime.date.today().strftime("%b %d, %Y")
-
-    return f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>90-Day Blueprint — {name}</title>
-<style>
-body {{
-    font-family: Inter, sans-serif;
-    background: #050608;
-    color: white;
-    padding: 30px;
-}}
-.card {{
-    background: #0f0f0f;
-    padding: 30px;
-    border-radius: 12px;
-    border: 1px solid #222;
-    max-width: 760px;
-    margin: auto;
-}}
-h1 {{ color: #D4A72C; }}
-</style>
-</head>
-<body>
-<div class="card">
-<h1>90-Day Business Blueprint</h1>
-<p>Prospect: {name}<br>
-Legacy Code: {legacy_code}<br>
-Generated: {today}</p>
-<div>{body.replace('\n', '<br>')}</div>
-</div>
-</body>
-</html>
-"""
-
-def build_consult_html(prospect: dict, legacy_code: str, body: str) -> str:
-    name = prospect.get("Prospect Name") or "Prospect"
-    email = prospect.get("Prospect Email") or ""
-    today = datetime.date.today().strftime("%b %d, %Y")
-
-    return f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Consultation Briefing — {name}</title>
-<style>
-body {{
-    font-family: Inter, sans-serif;
-    background: #050608;
-    color: white;
-    padding: 30px;
-}}
-.card {{
-    background: #0f0f0f;
-    padding: 30px;
-    border-radius: 12px;
-    border: 1px solid #222;
-    max-width: 760px;
-    margin: auto;
-}}
-h1 {{ color: #D4A72C; }}
-</style>
-</head>
-<body>
-<div class="card">
-<h1>Consultation Briefing</h1>
-<p>Prospect: {name} ({email})<br>
-Legacy Code: {legacy_code}<br>
-Generated: {today}</p>
-<div>{body.replace('\n', '<br>')}</div>
-</div>
-</body>
-</html>
-"""
-
-# -------- PDF Engine -------- #
-
-def html_to_pdf(html: str, out_path: str):
+def html_to_pdf(html: str, output_path: Path):
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         page.set_content(html, wait_until="networkidle")
-        page.pdf(
-            path=out_path,
-            format="A4",
-            print_background=True,
-            margin={"top": "15mm", "bottom": "15mm", "left": "12mm", "right": "12mm"},
-        )
+        page.pdf(path=str(output_path), format="A4", print_background=True)
         browser.close()
 
-# -------- Upload to Airtable -------- #
 
-def attach_pdf_to_airtable(record_id: str, field_name: str, file_path: str):
+# ---------------------- ATTACH TO AIRTABLE ---------------------- #
+
+def attach_pdfs_to_airtable(record_id: str,
+                            prospect_pdf_url: str | None,
+                            coach_pdf_url: str | None):
+    if not (prospect_pdf_url or coach_pdf_url):
+        print("⚠️ No PDF URLs to attach.")
+        return
+
+    fields = {}
+    if prospect_pdf_url:
+        fields["90 Day Blueprint PDF"] = [{"url": prospect_pdf_url}]
+    if coach_pdf_url:
+        fields["Consultation Briefing PDF"] = [{"url": coach_pdf_url}]
+
+    try:
+        r = requests.patch(
+            _airtable_url(SURVEY_TABLE, record_id),
+            headers=_airtable_headers(),
+            json={"fields": fields},
+            timeout=20,
+        )
+        r.raise_for_status()
+        print(f"✅ Attached PDFs to Airtable record {record_id}")
+    except Exception as e:
+        print(f"❌ Failed to attach PDFs to Airtable: {e}")
+
+
+# ---------------------- PUBLIC ENTRYPOINT ---------------------- #
+
+def generate_reports_for_email_or_legacy_code(prospect_email: str | None = None,
+                                              legacy_code: str | None = None,
+                                              public_base_url: str | None = None) -> dict:
     """
-    Airtable accepts a URL OR base64 file upload.
-    Railway gives us local files → we upload via base64.
+    Main function to be called from app.py AFTER Deep Dive answers are written.
+    - Looks up the Survey Responses row
+    - Pulls Q1–Q30 (whatever exists)
+    - Calls OpenAI twice
+    - Renders HTML→PDF via Playwright
+    - Serves PDFs from /reports and attaches them as Airtable attachments
     """
+    result = {"ok": False, "reason": None}
 
-    # Read PDF bytes and base64 encode
-    with open(file_path, "rb") as f:
-        content = base64.b64encode(f.read()).decode("utf-8")
+    record = find_survey_row(prospect_email, legacy_code)
+    if not record:
+        result["reason"] = "no_record"
+        return result
 
-    upload_url = "https://api.airtable.com/v0/batch-upload"
+    record_id = record["id"]
+    fields = record.get("fields", {})
 
-    payload = {
-        "upload": {
-            "fields": {
-                field_name: [
-                    {
-                        "filename": os.path.basename(file_path),
-                        "bytes": content,
-                        "contentType": "application/pdf",
-                    }
-                ]
-            },
-            "tableIdOrName": PROSPECTS_TABLE,
-            "recordId": record_id,
-        }
+    legacy_code_val = fields.get("Legacy Code") or legacy_code
+    meta = {
+        "prospect_name": fields.get("Prospect Name"),
+        "prospect_email": fields.get("Prospect Email"),
+        "legacy_code": legacy_code_val,
+        "date_submitted": fields.get("Date Submitted"),
     }
 
-    r = requests.post(upload_url, headers=_h(), json=payload)
-    r.raise_for_status()
-    return True
+    q_data = extract_q_block(fields)
 
-# -------- Main Orchestrator -------- #
+    # --- Generate texts via OpenAI --- #
+    prospect_messages = build_prospect_prompt(meta, q_data)
+    coach_messages = build_coach_prompt(meta, q_data)
 
-def generate_and_email_reports_for_legacy_code(legacy_code: str):
-    """
-    NEW VERSION:
-    ✔ Fetch Prospect + Deep Dive
-    ✔ Generate both PDFs
-    ✔ Upload BOTH PDFs to Airtable as attachments
-    ✔ NO EMAIL
-    """
+    prospect_text = call_openai(prospect_messages, temperature=0.65)
+    coach_text = call_openai(coach_messages, temperature=0.55)
 
-    prospect, deepdive, record_id = get_prospect_and_deepdive(legacy_code)
+    prospect_html_body = markdownish_to_html(prospect_text)
+    coach_html_body = markdownish_to_html(coach_text)
 
-    # Generate content
-    prospect_text = generate_prospect_report_text(prospect, deepdive)
-    consult_text = generate_consult_report_text(prospect, deepdive)
+    prospect_html = html_shell("90-Day Business Blueprint", legacy_code_val, prospect_html_body)
+    coach_html = html_shell("Consultation Briefing", legacy_code_val, coach_html_body)
 
-    # Build HTML
-    prospect_html = build_prospect_html(prospect, legacy_code, prospect_text)
-    consult_html = build_consult_html(prospect, legacy_code, consult_text)
+    reports_dir = Path(os.getenv("REPORTS_DIR") or "reports")
+    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
 
-    # Output paths
-    base = f"/tmp/{legacy_code.replace(' ', '_')}"
-    prospect_pdf_path = base + "_prospect_90_day_blueprint.pdf"
-    consult_pdf_path = base + "_consultation_briefing.pdf"
+    safe_suffix = legacy_code_val or (prospect_email or "prospect").replace("@", "_at_")
+    safe_suffix = "".join(c for c in safe_suffix if c.isalnum() or c in ("-", "_"))
 
-    # Render PDFs
-    html_to_pdf(prospect_html, prospect_pdf_path)
-    html_to_pdf(consult_html, consult_pdf_path)
-
-    # Upload PDFs into Airtable
-    attach_pdf_to_airtable(record_id, "90 Day Blueprint PDF", prospect_pdf_path)
-    attach_pdf_to_airtable(record_id, "Consultation Briefing PDF", consult_pdf_path)
-
-    return {
-        "prospect_pdf": prospect_pdf_path,
-        "consult_pdf": consult_pdf_path,
-        "airtable_record": record_id,
-    }
+    prospect_pdf_name = f"blueprint_{safe_suffix}_{

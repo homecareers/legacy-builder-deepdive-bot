@@ -19,13 +19,13 @@ PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")  # e.g. https://legacy-builder-de
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
-client = OpenAI()
+# Fix for Railway proxy issues
+import os as _os
+for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']:
+    _os.environ.pop(key, None)
 
-
-def _airtable_headers():
-    return {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Content-Type": "application/json",
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")
     }
 
 

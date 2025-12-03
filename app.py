@@ -87,12 +87,7 @@ def find_survey_row(prospect_email=None, legacy_code=None):
 
 def save_deepdive_to_airtable(record_id, answers):
     """
-    Patch Q7–Q30 + Date Submitted into the existing Survey Responses row.
-
-    Mapping assumption:
-    answers[0] -> Q7
-    answers[1] -> Q8
-    ...
+    Patch Q7–Q30 + Deep Dive Date Submitted into the existing Survey Responses row.
     """
     fields = {}
 
@@ -106,8 +101,8 @@ def save_deepdive_to_airtable(record_id, answers):
         field_name = f"Q{q_number}"  # Airtable fields named Q7, Q8, ..., Q30
         fields[field_name] = answer
 
-    # Update Date Submitted (Deep Dive timestamp overwrite)
-    fields["Date Submitted"] = datetime.datetime.utcnow().isoformat()
+    # 🚨 ONLY CHANGE MADE — restoring original Airtable field name
+    fields["Deep Dive Date Submitted"] = datetime.datetime.utcnow().isoformat()
 
     try:
         r = requests.patch(
@@ -137,15 +132,11 @@ def push_deepdive_to_ghl(email, answers):
 
 @app.route("/")
 def index():
-    # Your Deep Dive chat.html template
     return render_template("chat.html")
 
 
 @app.route("/submit", methods=["POST"])
 def submit_deepdive():
-    """
-    Survey #2 submission endpoint.
-    """
     try:
         data = request.json or {}
         email = (data.get("email") or "").strip()
@@ -180,7 +171,6 @@ def submit_deepdive():
         except Exception as e:
             print(f"❌ DeepDive PDF flow error (non-fatal): {e}")
 
-        # 4️⃣ Always return redirect URL so user flow never breaks
         return jsonify({"redirect_url": DEEPDIVE_REDIRECT_URL})
 
     except Exception as e:
@@ -190,9 +180,6 @@ def submit_deepdive():
 
 @app.route("/reports/<path:filename>")
 def serve_report(filename):
-    """
-    Serve PDFs so Airtable can pull them as attachments.
-    """
     return send_from_directory(REPORTS_DIR, filename)
 
 

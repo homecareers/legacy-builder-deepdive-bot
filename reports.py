@@ -7,9 +7,15 @@ from pathlib import Path
 import requests
 from playwright.sync_api import sync_playwright
 
-# Fix Railway proxy issues BEFORE importing OpenAI
-for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
-    os.environ.pop(key, None)
+# AGGRESSIVE proxy removal - remove EVERYTHING proxy-related
+import os as _os
+for key in list(_os.environ.keys()):
+    if 'proxy' in key.lower() or 'PROXY' in key:
+        del _os.environ[key]
+
+# Set NO_PROXY to prevent any proxy usage
+_os.environ['NO_PROXY'] = '*'
+_os.environ['no_proxy'] = '*'
 
 from openai import OpenAI
 
@@ -24,8 +30,13 @@ PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
-# Simple OpenAI client initialization
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Force simple initialization
+try:
+    client = OpenAI()  # Let it use OPENAI_API_KEY env var directly
+except Exception as e:
+    print(f"Warning: OpenAI init issue: {e}")
+    # Fallback - import without client if needed
+    client = None
 
 
 def _airtable_headers():
@@ -98,6 +109,10 @@ def extract_q_block(fields: dict) -> dict:
 # ---------------------- OPENAI HELPERS ---------------------- #
 
 def call_openai(messages: list[dict], temperature: float = 0.7) -> str:
+    if not client:
+        print("❌ OpenAI client not initialized")
+        return "Report generation failed. (Client initialization error.)"
+    
     try:
         resp = client.chat.completions.create(
             model=OPENAI_MODEL,

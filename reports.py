@@ -2,7 +2,6 @@ import os
 import json
 import datetime
 import urllib.parse
-import tempfile
 from pathlib import Path
 
 import requests
@@ -43,10 +42,6 @@ def _airtable_url(table: str, record_id: str | None = None, params: dict | None 
 
 def find_survey_row(prospect_email: str | None = None,
                     legacy_code: str | None = None) -> dict | None:
-    """
-    Find the ONE Survey Responses row for this prospect.
-    Priority: email + legacy -> email -> legacy.
-    """
     if not prospect_email and not legacy_code:
         print("⚠️ find_survey_row: no email or legacy_code provided.")
         return None
@@ -80,10 +75,6 @@ def find_survey_row(prospect_email: str | None = None,
 
 
 def extract_q_block(fields: dict) -> dict:
-    """
-    Build a clean { 'Q1': value, ..., 'Q30': value } dict
-    by matching any Airtable field that *starts with* 'Q1', 'Q2', etc.
-    """
     q_data: dict[str, str | None] = {}
 
     for i in range(1, 31):
@@ -101,9 +92,6 @@ def extract_q_block(fields: dict) -> dict:
 # ---------------------- OPENAI HELPERS ---------------------- #
 
 def call_openai(messages: list[dict], temperature: float = 0.7) -> str:
-    """
-    Wrapper around OpenAI chat.completions for 1.x client.
-    """
     try:
         resp = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -117,9 +105,6 @@ def call_openai(messages: list[dict], temperature: float = 0.7) -> str:
 
 
 def build_prospect_prompt(meta: dict, q_data: dict) -> list[dict]:
-    """
-    Prompt for the 90-Day Business Blueprint (prospect-facing).
-    """
     return [
         {
             "role": "system",
@@ -156,9 +141,6 @@ def build_prospect_prompt(meta: dict, q_data: dict) -> list[dict]:
 
 
 def build_coach_prompt(meta: dict, q_data: dict) -> list[dict]:
-    """
-    Prompt for the Consultation Briefing (coach-facing).
-    """
     gem_style = q_data.get("Q6") or ""
     return [
         {
@@ -203,7 +185,7 @@ def html_shell(title: str, legacy_code: str | None, body_html: str) -> str:
 
     generated_ts = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
-    return f"""
+    template = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -261,14 +243,17 @@ def html_shell(title: str, legacy_code: str | None, body_html: str) -> str:
   </div>
 </body>
 </html>
-    """.strip()
+""".strip()
+
+    return template.format(
+        title=title,
+        meta_line=meta_line,
+        generated_ts=generated_ts,
+        body_html=body_html,
+    )
 
 
 def markdownish_to_html(text: str) -> str:
-    """
-    Very light transformer: split on blank lines, wrap in <p>. Leave headings as-is.
-    (Good enough for this context.)
-    """
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     html_parts = []
     for p in paragraphs:
@@ -322,14 +307,6 @@ def attach_pdfs_to_airtable(record_id: str,
 def generate_reports_for_email_or_legacy_code(prospect_email: str | None = None,
                                               legacy_code: str | None = None,
                                               public_base_url: str | None = None) -> dict:
-    """
-    Main function to be called from app.py AFTER Deep Dive answers are written.
-    - Looks up the Survey Responses row
-    - Pulls Q1–Q30 (whatever exists)
-    - Calls OpenAI twice
-    - Renders HTML→PDF via Playwright
-    - Serves PDFs from /reports and attaches them as Airtable attachments
-    """
     result = {"ok": False, "reason": None}
 
     record = find_survey_row(prospect_email, legacy_code)
@@ -350,7 +327,6 @@ def generate_reports_for_email_or_legacy_code(prospect_email: str | None = None,
 
     q_data = extract_q_block(fields)
 
-    # --- Generate texts via OpenAI --- #
     prospect_messages = build_prospect_prompt(meta, q_data)
     coach_messages = build_coach_prompt(meta, q_data)
 
@@ -369,4 +345,36 @@ def generate_reports_for_email_or_legacy_code(prospect_email: str | None = None,
     safe_suffix = legacy_code_val or (prospect_email or "prospect").replace("@", "_at_")
     safe_suffix = "".join(c for c in safe_suffix if c.isalnum() or c in ("-", "_"))
 
-    prospect_pdf_name = f"blueprint_{safe_suffix}_{
+    prospect_pdf_name = f"blueprint_{safe_suffix}_{timestamp}.pdf"
+    coach_pdf_name = f"briefing_{safe_suffix}_{timestamp}.pdf"
+
+    prospect_pdf_path = reports_dir / prospect_pdf_name
+    coach_pdf_path = reports_dir / coach_pdf_name
+
+    try:
+        html_to_pdf(prospect_html, prospect_pdf_path)
+        html_to_pdf(coach_html, coach_pdf_path)
+    except Exception as e:
+        print(f"❌ PDF generation error: {e}")
+        result["reason"] = "pdf_error"
+        return result
+
+    base_url = (public_base_url or PUBLIC_BASE_URL or "").rstrip("/")
+    if base_url:
+        prospect_url = f"{base_url}/reports/{prospect_pdf_name}"
+        coach_url = f"{base_url}/reports/{coach_pdf_name}"
+    else:
+        print("⚠️ No PUBLIC_BASE_URL set; PDFs will not be attached.")
+        prospect_url = coach_url = None
+
+    attach_pdfs_to_airtable(record_id, prospect_url, coach_url)
+
+    result.update(
+        {
+            "ok": True,
+            "record_id": record_id,
+            "prospect_pdf": prospect_pdf_name,
+            "coach_pdf": coach_pdf_name,
+        }
+    )
+    return result

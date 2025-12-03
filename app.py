@@ -4,6 +4,7 @@ import os
 import datetime
 import urllib.parse
 import requests
+import time   # <-- ONLY NEW IMPORT ADDED
 
 from reports import generate_reports_for_email_or_legacy_code
 
@@ -101,7 +102,7 @@ def save_deepdive_to_airtable(record_id, answers):
         field_name = f"Q{q_number}"  # Airtable fields named Q7, Q8, ..., Q30
         fields[field_name] = answer
 
-    # 🚨 ONLY CHANGE MADE — restoring original Airtable field name
+    # Timestamp field (Commander-correct version)
     fields["Deep Dive Date Submitted"] = datetime.datetime.utcnow().isoformat()
 
     try:
@@ -157,6 +158,9 @@ def submit_deepdive():
 
         # 1️⃣ Write Q7–Q30 into same row
         save_deepdive_to_airtable(record_id, answers)
+
+        # 🕒 Commander Fix: ENABLE Airtable propagation before generating PDFs
+        time.sleep(0.75)
 
         # 2️⃣ Optional GHL sync (currently no-op)
         push_deepdive_to_ghl(email, answers)

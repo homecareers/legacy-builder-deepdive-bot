@@ -134,7 +134,7 @@ def submit_legacy_survey():
         if not email:
             return jsonify({"error": "Missing email"}), 400
 
-        record = find_survey_row(email=email)
+        record = find_survey_row(prospect_email=email)
         if not record:
             print("❌ Legacy Survey submit: no matching row found.")
             return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})

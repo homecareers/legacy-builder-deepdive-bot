@@ -4,7 +4,7 @@ import os
 import datetime
 import urllib.parse
 import requests
-import time   # <-- ONLY NEW IMPORT ADDED
+import time
 
 from reports import generate_reports_for_email_or_legacy_code
 
@@ -29,7 +29,7 @@ DEEPDIVE_REDIRECT_URL = (
     or "https://poweredbylegacycode.com/activation"
 )
 
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")  # e.g. https://legacy-builder-deepdive-bot.up.railway.app
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
 REPORTS_DIR = os.getenv("REPORTS_DIR") or "reports"
 
 
@@ -52,9 +52,6 @@ def _airtable_url(table, record_id=None, params=None):
 # ---------------------- AIRTABLE HELPERS ---------------------- #
 
 def find_survey_row(prospect_email=None, legacy_code=None):
-    """
-    MUST NOT create a new row. Only find existing by email and/or Legacy Code.
-    """
     if not prospect_email and not legacy_code:
         print("❌ DeepDive find_survey_row: no keys provided.")
         return None
@@ -87,9 +84,6 @@ def find_survey_row(prospect_email=None, legacy_code=None):
 
 
 def save_deepdive_to_airtable(record_id, answers):
-    """
-    Patch Q7–Q30 + Deep Dive Date Submitted into the existing Survey Responses row.
-    """
     fields = {}
 
     max_questions = 24  # Q7–Q30
@@ -99,11 +93,10 @@ def save_deepdive_to_airtable(record_id, answers):
 
     for idx, answer in enumerate(padded):
         q_number = 7 + idx
-        field_name = f"Q{q_number}"  # Airtable fields named Q7, Q8, ..., Q30
+        field_name = f"Q{q_number}"
         fields[field_name] = answer
 
-    # Timestamp field (Commander-correct version)
-    fields["Deep Dive Date Submitted"] = datetime.datetime.utcnow().isoformat()
+    # ❌ REMOVED — NO TIMESTAMP FIELD WRITTEN ANYMORE
 
     try:
         r = requests.patch(
@@ -118,18 +111,10 @@ def save_deepdive_to_airtable(record_id, answers):
         print(f"❌ Error writing DeepDive answers to Airtable: {e}")
 
 
-# ---------------------- OPTIONAL: GHL SYNC (DISABLED) ---------------------- #
-
 def push_deepdive_to_ghl(email, answers):
-    """
-    Placeholder. Commander order: no tags, and PDF flow must NOT depend on GHL.
-    Leaving this as a no-op for now.
-    """
     print("ℹ️ GHL DeepDive sync is currently disabled.")
     return
 
-
-# ---------------------- ROUTES ---------------------- #
 
 @app.route("/")
 def index():
@@ -156,16 +141,12 @@ def submit_deepdive():
         fields = record.get("fields", {})
         existing_legacy_code = fields.get("Legacy Code") or legacy_code
 
-        # 1️⃣ Write Q7–Q30 into same row
         save_deepdive_to_airtable(record_id, answers)
 
-        # 🕒 Commander Fix: ENABLE Airtable propagation before generating PDFs
         time.sleep(0.75)
 
-        # 2️⃣ Optional GHL sync (currently no-op)
         push_deepdive_to_ghl(email, answers)
 
-        # 3️⃣ Trigger PDF engine (Airtable-only, safe if it fails)
         try:
             generate_reports_for_email_or_legacy_code(
                 prospect_email=email,

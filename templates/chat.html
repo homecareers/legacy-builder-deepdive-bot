@@ -1,7 +1,8 @@
-   <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-  <title>ANGUS™ — Builder Deep Dive (Q07–Q30)</title>
+  <title>ANGUS™ — Legacy Survey (Q07–Q30)</title>
+
   <style>
     body {
       font-family: 'Inter', Arial, sans-serif;
@@ -126,18 +127,14 @@
     const chat = document.getElementById("chat");
     const BACKEND_URL = "/submit";
 
-    // =============================
-    // FORCE SCROLL FIX
-    // =============================
+    // FORCE SCROLL
     function forceScroll() {
       setTimeout(() => {
         chat.scrollTop = chat.scrollHeight;
-      }, 50);
+      }, 60);
     }
 
-    // =============================
-    // ANGUS INSTRUCTION MAP
-    // =============================
+    // ANGUS INSTRUCTIONS
     const angusInstructions = {
       0:  "“Give me the real lay of the land — just facts.”",
       1:  "“Choose the one that matches how you REALLY show up.”",
@@ -166,9 +163,7 @@
       24: "“Drop the best email — the one you check daily.”"
     };
 
-    // =============================
     // STEPS
-    // =============================
     const steps = [
 
       { type: "text",
@@ -253,7 +248,7 @@
         question: "Q15 — Commitments We Must Build Around",
         placeholder: "Work, family, church, kids, sports, appointments, etc."
       },
-      // Q16 — multi with other
+
       { type: "multi",
         question: "Q16 — What Helps You Stay Consistent?",
         options: [
@@ -270,7 +265,6 @@
         customInputIndex: 8
       },
 
-      // Q17 — multi with other
       { type: "multi",
         question: "Q17 — What Usually Pulls You Off Track?",
         options: [
@@ -287,7 +281,6 @@
         customInputIndex: 8
       },
 
-      // Q18 — single
       { type: "single",
         question: "Q18 — Stress/Discouragement Response",
         options: [
@@ -301,7 +294,6 @@
         ]
       },
 
-      // Q19 — multi with other
       { type: "multi",
         question: "Q19 — Strengths You Bring",
         options: [
@@ -320,7 +312,6 @@
         customInputIndex: 10
       },
 
-      // Q20 — single with other
       { type: "single",
         question: "Q20 — Skill You Want the MOST Help With",
         options: [
@@ -337,7 +328,6 @@
         customInputIndex: 8
       },
 
-      // Q21 — single
       { type: "single",
         question: "Q21 — System-Following Confidence (1–10)",
         options: [
@@ -346,31 +336,26 @@
         ]
       },
 
-      // Q22 — text
       { type: "text",
         question: "Q22 — What Would $300–$800/month Support Right Now?",
         placeholder: "Where would that income go? Be real about it."
       },
 
-      // Q23 — text
       { type: "text",
         question: "Q23 — Biggest Fear or Hesitation",
-        placeholder: "What scares you or makes you hesitate? No emojis."
+        placeholder: "What scares you or makes you hesitant? No emojis."
       },
 
-      // Q24 — text
       { type: "text",
         question: "Q24 — If Nothing Changes in 6 Months, What Worries You Most?",
         placeholder: "Write what's true. This helps your coach lead you."
       },
 
-      // Q25 — text
       { type: "text",
         question: "Q25 — Who You Want to Become in 12 Months",
         placeholder: "Describe the version of you we're building."
       },
 
-      // Q26 — single with other
       { type: "single",
         question: "Q26 — One Feeling You NEVER Want Again",
         options: [
@@ -386,7 +371,6 @@
         customInputIndex: 7
       },
 
-      // Q27 — single
       { type: "single",
         question: "Q27 — One Feeling You WANT as Your Baseline",
         options: [
@@ -395,7 +379,6 @@
         ]
       },
 
-      // Q28 — single
       { type: "single",
         question: "Q28 — Preferred Accountability Style",
         options: [
@@ -408,7 +391,6 @@
         ]
       },
 
-      // Q29 — multi
       { type: "multi",
         question: "Q29 — Preferred Tracking Style",
         options: [
@@ -422,21 +404,19 @@
         ]
       },
 
-      // Q30 — text
       { type: "text",
         question: "Q30 — Why is NOW the right time to build something?",
         placeholder: "This is your emotional tattoo moment."
       },
 
-      // Email
+      // EMAIL
       { type: "email",
-        question: "Finally — what's the BEST email for your 90-day Legacy Builder projection?"
+        question: "Finally — what's the BEST email for your Legacy Survey submission?"
       }
     ];
 
-    // =============================
+
     // ENGINE
-    // =============================
     const TOTAL_STEPS = steps.length;
     let currentStep = -1;
     let answers = [];
@@ -446,33 +426,31 @@
       chat.innerHTML += `<div class="message bot">${msg}</div>`;
       forceScroll();
     }
-    
+
     function showUserMessage(msg) {
       chat.innerHTML += `<div class="message user">${msg}</div>`;
       forceScroll();
     }
-    
+
     function showLoading() {
       chat.innerHTML += `<div class="message loading" id="loading">ANGUS is thinking</div>`;
       forceScroll();
     }
-    
+
     function hideLoading() {
       const l = document.getElementById("loading");
       if (l) l.remove();
       forceScroll();
     }
 
-    // =============================
+
     // RENDER STEP
-    // =============================
     function renderStep() {
       currentStep++;
       if (currentStep >= TOTAL_STEPS) return;
 
       const step = steps[currentStep];
 
-      // ANGUS instruction
       showBotMessage(
         `<div style="color:#D4A72C; font-style:italic;">ANGUS: ${angusInstructions[currentStep]}</div>`
       );
@@ -487,6 +465,7 @@
           step.question
         );
 
+        // SINGLE or MULTI
         if (step.type === "single" || step.type === "multi") {
           let html = `<div class="options" id="options-${currentStep}">`;
 
@@ -508,6 +487,7 @@
           forceScroll();
         }
 
+        // TEXT
         if (step.type === "text") {
           chat.innerHTML += `
             <div id="text-block-${currentStep}">
@@ -517,6 +497,7 @@
           forceScroll();
         }
 
+        // EMAIL
         if (step.type === "email") {
           chat.innerHTML += `
             <div id="email-block">
@@ -527,13 +508,12 @@
         }
 
         setupEventListeners();
-        
+
       }, 700);
     }
 
-    // =============================
+
     // EVENT LISTENERS
-    // =============================
     function setupEventListeners() {
 
       // CUSTOM OTHER
@@ -541,8 +521,7 @@
         btn.onclick = function() {
 
           const stepNum = parseInt(this.dataset.step);
-          const step = steps[stepNum];
-          const optionText = step.options[step.customInputIndex];
+          const optionText = steps[stepNum].options[steps[stepNum].customInputIndex];
 
           showUserMessage(optionText);
 
@@ -554,8 +533,7 @@
             <div id="custom-block-${stepNum}">
               <textarea id="custom-input-${stepNum}" placeholder="Type your exact answer..."></textarea>
               <button class="next-btn" id="custom-next-${stepNum}">Next</button>
-            </div>
-          `;
+            </div>`;
           forceScroll();
 
           document.getElementById(`custom-next-${stepNum}`).onclick = function() {
@@ -566,7 +544,6 @@
             }
 
             const combined = `${optionText} — ${val}`;
-
             showUserMessage(val);
             answers.push(combined);
 
@@ -575,6 +552,7 @@
           };
         };
       });
+
 
       // NORMAL OPTION BUTTONS
       document.querySelectorAll('.option-btn:not(.custom-other-btn)').forEach(btn => {
@@ -601,6 +579,7 @@
           }
         };
       });
+
 
       // MULTI NEXT
       document.querySelectorAll('.next-btn').forEach(btn => {
@@ -648,6 +627,7 @@
         }
       });
 
+
       // EMAIL SUBMIT
       const emailSubmit = document.getElementById('email-submit');
       if (emailSubmit) {
@@ -677,9 +657,8 @@
       }
     }
 
-    // =============================
-    // SUBMIT
-    // =============================
+
+    // SUBMIT TO BACKEND
     function submitSurvey() {
 
       showLoading();
@@ -713,12 +692,11 @@
       });
     }
 
-    // =============================
+
     // STARTUP
-    // =============================
     window.onload = () => {
       showBotMessage(
-        "Alright legend — I'm ANGUS™. We're about to get precise. Answer honestly. This is for YOUR 90-day build."
+        "Alright legend — I'm ANGUS™. This is your Legacy Survey. Answer honestly. This shapes your 90-day build."
       );
       setTimeout(renderStep, 1400);
     };

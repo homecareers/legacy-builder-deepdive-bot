@@ -3,7 +3,6 @@ from flask_cors import CORS
 import os
 import urllib.parse
 import requests
-import json
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -25,7 +24,9 @@ LEGACY_SURVEY_REDIRECT_URL = (
 
 GHL_API_KEY = os.getenv("GHL_API_KEY")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID")
-GHL_BASE_URL = "https://rest.gohighlevel.com/v1"
+
+# Use V2 API for better custom field support
+GHL_BASE_URL_V2 = "https://services.leadconnectorhq.com"
 
 # ---------------------- AIRTABLE Q-FIELDS ---------------------- #
 
@@ -56,33 +57,34 @@ DEEPDIVE_FIELDS = [
     "Q30 Why is NOW the right time to build something?"
 ]
 
-# ---------------------- GHL FIELD KEYS ---------------------- #
+# ---------------------- ACTUAL GHL FIELD KEYS FROM YOUR PDF ---------------------- #
 
 GHL_FIELDS = [
-    "q7_where_do_you_show_up_online_right_now_",
-    "q8_social_presence_snapshot",
-    "q9_content_confidence",
-    "q10_90_day_definition_of_this_worked",
-    "q11_desired_outcome",
-    "q12_why_that_outcome_matters",
-    "q13_weekly_schedule_reality",
-    "q14_highest_energy_windows",
-    "q15_commitments_we_must_build_around",
-    "q16_what_helps_you_stay_consistent",
-    "q17_what_usually_pulls_you_off_track",
-    "q18_stress_discouragement_response",
-    "q19_strengths_you_bring",
-    "q20_skill_you_want_the_most_help_with",
-    "q21_system_following_confidence",
-    "q22_what_would_300_800_month_support_right_now_",
-    "q23_biggest_fear_or_hesitation",
-    "q24_if_nothing_changes_in_6_months_what_worries_you_most_",
-    "q25_who_you_want_to_become_in_12_months",
-    "q26_one_feeling_you_never_want_again",
-    "q27_one_feeling_you_want_as_your_baseline",
-    "q28_preferred_accountability_style",
-    "q29_preferred_tracking_style",
-    "q30__hy_is_now_the_right_time_to_build_something_"
+    "q7_where_do_you_show_up_online_right_now",  # Q7
+    "q8_social_presence_snapshot",  # Q8
+    "q9_content_confidence_110",  # Q9 - Note the 110 suffix
+    "q10_90day_definition_of_this_worked",  # Q10 - Note: 90day not 90_day
+    # Q11 and Q12 don't exist in your GHL fields based on the PDF
+    "",  # Q11 placeholder
+    "",  # Q12 placeholder
+    "q13_weekly_schedule_reality",  # Q13
+    "q14_highest_energy_windows",  # Q14
+    "q15_commitments_we_must_build_around",  # Q15
+    "q16_what_helps_you_stay_consistent",  # Q16
+    "q17_what_usually_pulls_you_off_track",  # Q17
+    "q18_stressdiscouragement_response",  # Q18 - Note: no slash
+    "q19_strengths_you_bring",  # Q19
+    "q20_skill_you_want_the_most_help_with",  # Q20
+    "q21__systemfollowing_confidence_110",  # Q21 - Note: double underscore
+    "q22_what_would_300800month_support_right_now",  # Q22 - Note: no dashes in 300800
+    "q23__biggest_fear_or_hesitation",  # Q23 - Note: double underscore
+    "q24__if_nothing_changes_in_6_months_what_worries_you_most",  # Q24 - Note: double underscore
+    "q25_who_you_want_to_become_in_12_months",  # Q25
+    "q26__one_feeling_you_never_want_again",  # Q26 - Note: double underscore
+    "q27__one_feeling_you_want_as_your_baseline",  # Q27 - Note: double underscore
+    "q28_preferred_accountability_style",  # Q28
+    "q29_preferred_tracking_style",  # Q29
+    "q30_why_is_now_the_right_time_to_build_something"  # Q30
 ]
 
 # ---------------------- HELPERS ---------------------- #
@@ -157,7 +159,7 @@ def save_legacy_survey_to_airtable(record_id, answers):
     except Exception as e:
         print("❌ Airtable PATCH error:", e)
 
-# ---------------------- GHL SYNC WITH DETAILED DEBUGGING ---------------------- #
+# ---------------------- GHL SYNC USING V2 API ---------------------- #
 
 def push_legacy_survey_to_ghl(email, answers):
 
@@ -165,25 +167,35 @@ def push_legacy_survey_to_ghl(email, answers):
         print("⚠️ GHL disabled — missing credentials")
         return
 
+    # V2 API headers
     headers = {
         "Authorization": f"Bearer {GHL_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Version": "2021-07-28"
     }
 
-    # EMAIL-ONLY LOOKUP
-    lookup_url = f"{GHL_BASE_URL}/contacts/?email={urllib.parse.quote(email)}&locationId={GHL_LOCATION_ID}"
+    # V2 API EMAIL LOOKUP
+    lookup_url = f"{GHL_BASE_URL_V2}/contacts/search/duplicate"
+    lookup_payload = {
+        "locationId": GHL_LOCATION_ID,
+        "email": email,
+        "searchMethod": "EMAIL"
+    }
 
     try:
-        r = requests.get(lookup_url, headers=headers, timeout=20)
-        r.raise_for_status()
+        r = requests.post(lookup_url, headers=headers, json=lookup_payload, timeout=20)
+        
+        if r.status_code != 200:
+            print(f"❌ GHL lookup failed with status {r.status_code}: {r.text}")
+            return
+            
         data = r.json()
         
-        contacts = data.get("contacts", [])
-        if not contacts:
+        contact = data.get("contact")
+        if not contact:
             print(f"❌ No GHL contact found for email: {email}")
             return
 
-        contact = contacts[0]
         contact_id = contact.get("id")
         
         # Handle None values properly
@@ -192,78 +204,50 @@ def push_legacy_survey_to_ghl(email, answers):
         full_name = f"{first_name} {last_name}".strip()
         
         if not full_name:
-            full_name = contact.get("contactName") or contact.get("name") or contact.get("email") or "Unknown"
+            full_name = contact.get("name") or contact.get("email") or "Unknown"
 
         print(f"📌 Updating GHL Contact — {full_name} ({email}), ID: {contact_id}")
-        
-        # DEBUG: Show existing custom fields to verify field names
-        existing_custom_fields = contact.get("customFields", {})
-        if existing_custom_fields:
-            print(f"🔍 Existing custom fields in contact: {list(existing_custom_fields.keys())[:5]}...")
         
     except Exception as e:
         print(f"❌ GHL lookup error: {e}")
         return
 
+    # Prepare answers
     while len(answers) < 24:
         answers.append("No response")
     answers = answers[:24]
 
-    # Try different approaches for custom fields
+    # Build custom fields - skip empty field keys (Q11 and Q12)
     custom_fields = {}
     for i in range(24):
         field_key = GHL_FIELDS[i]
-        custom_fields[field_key] = answers[i]
+        if field_key:  # Only add if field key exists
+            custom_fields[field_key] = answers[i]
 
-    # Try multiple payload formats to see what works
+    # V2 API payload format
     payload = {
-        "customFields": custom_fields
-    }
-
-    # Also try with individual field updates (alternative format)
-    payload_alternative = {
-        "customField": custom_fields  # Some versions use singular
+        "customFields": custom_fields,
+        "locationId": GHL_LOCATION_ID
     }
 
     try:
-        update_url = f"{GHL_BASE_URL}/contacts/{contact_id}"
+        update_url = f"{GHL_BASE_URL_V2}/contacts/{contact_id}"
         
-        print(f"📤 Sending to GHL: {update_url}")
-        print(f"📦 Sample payload: {GHL_FIELDS[0]}: '{answers[0][:50]}...'")  # Show first field and value
+        print(f"📤 Sending to GHL V2: {update_url}")
+        print(f"📦 Updating {len(custom_fields)} fields...")
         
-        # First try with customFields (plural)
         r = requests.put(update_url, headers=headers, json=payload, timeout=20)
         
         print(f"📊 Response status: {r.status_code}")
-        response_data = r.json() if r.text else {}
         
-        # Check if custom fields were actually updated in the response
         if r.status_code == 200:
-            if "customFields" in response_data or "customField" in response_data:
-                updated_fields = response_data.get("customFields", response_data.get("customField", {}))
-                # Check if our fields are in the response
-                if GHL_FIELDS[0] in updated_fields:
-                    print("✅ GHL updated successfully - fields confirmed in response")
-                else:
-                    print("⚠️ GHL returned 200 but fields might not be updated")
-                    print(f"⚠️ Response custom fields keys: {list(updated_fields.keys())[:5] if updated_fields else 'None'}")
-                    
-                    # Try alternative format
-                    print("🔄 Trying alternative payload format...")
-                    r2 = requests.put(update_url, headers=headers, json=payload_alternative, timeout=20)
-                    if r2.status_code == 200:
-                        print("✅ Alternative format accepted")
-                    else:
-                        print(f"❌ Alternative format also failed: {r2.status_code}")
-            else:
-                print("⚠️ GHL returned 200 but no custom fields in response")
-                print(f"⚠️ Response keys: {list(response_data.keys()) if response_data else 'Empty response'}")
+            print("✅ GHL V2 updated successfully (email lookup)")
         else:
-            print(f"❌ GHL update failed with status {r.status_code}")
-            print(f"❌ Response: {r.text[:500]}...")  # Show first 500 chars of error
+            print(f"❌ GHL V2 update failed with status {r.status_code}")
+            print(f"❌ Response: {r.text[:500]}...")
             
     except Exception as e:
-        print(f"❌ GHL update error: {e}")
+        print(f"❌ GHL V2 update error: {e}")
 
 # ---------------------- ROUTES ---------------------- #
 
@@ -289,7 +273,7 @@ def submit_legacy_survey():
 
     save_legacy_survey_to_airtable(record_id, answers)
 
-    # CORRECTED GHL CALL WITH DEBUGGING
+    # USE V2 API FOR GHL UPDATE
     push_legacy_survey_to_ghl(email, answers)
 
     return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})

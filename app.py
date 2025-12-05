@@ -22,22 +22,22 @@ LEGACY_SURVEY_REDIRECT_URL = (
 )
 
 # ---------------------- FIELD NAMES MAPPING ---------------------- #
-# Map question numbers to ACTUAL Airtable field names
+# Map question numbers to EXACT Airtable field names from your screenshots
 QUESTION_FIELD_MAP = {
-    7: "Q7 Where do you see your team growing fastest in the next 90 days?",
+    7: "Q7 Where do you show up online right now?",
     8: "Q8 Social Presence Snapshot",
     9: "Q9 Content Confidence",
     10: "Q10 90-Day Definition of This WORKED",
     11: "Q11 Desired Outcome",
     12: "Q12 Why That Outcome Matters",
-    13: "Q13 Weakly Schedule Reality",
+    13: "Q13 Weekly Schedule Reality",  # Fixed typo - was "Weakly"
     14: "Q14 Highest Energy Windows",
     15: "Q15 Commitments We Must Build Around",
     16: "Q16 What Helps You Stay Consistent?",
     17: "Q17 What Usually Pulls You Off Track?",
     18: "Q18 Stress/Discouragement Response",
     19: "Q19 Strengths You Bring",
-    20: "Q20 Skill You want the MOST Help With",
+    20: "Q20 Skill You Want the MOST Help With",
     21: "Q21 System-Following Confidence",
     22: "Q22 What Would $300-$800/month Support Right Now?",
     23: "Q23 Biggest Fear or Hesitation",
@@ -121,7 +121,7 @@ def find_survey_row(prospect_email=None, legacy_code=None):
 
 def save_legacy_survey_to_airtable(record_id, answers):
     """
-    Maps answers to the ACTUAL Airtable field names
+    Maps answers to the EXACT Airtable field names
     """
     
     # Ensure we have exactly 24 answers (Q7-Q30)
@@ -131,7 +131,7 @@ def save_legacy_survey_to_airtable(record_id, answers):
     while len(padded) < max_questions:
         padded.append("No response")
     
-    # Build payload using ACTUAL field names from Airtable
+    # Build payload using EXACT field names from Airtable
     fields_payload = {}
     
     for idx, answer in enumerate(padded):

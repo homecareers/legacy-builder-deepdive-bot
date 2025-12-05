@@ -21,34 +21,33 @@ LEGACY_SURVEY_REDIRECT_URL = (
     or "https://poweredbylegacycode.com/activation"
 )
 
-# ---------------------- FIELD NAMES MAPPING ---------------------- #
-# Map question numbers to EXACT Airtable field names from your screenshots
-QUESTION_FIELD_MAP = {
-    7: "Q7 Where do you show up online right now?",
-    8: "Q8 Social Presence Snapshot",
-    9: "Q9 Content Confidence",
-    10: "Q10 90-Day Definition of This WORKED",
-    11: "Q11 Desired Outcome",
-    12: "Q12 Why That Outcome Matters",
-    13: "Q13 Weekly Schedule Reality",  # Fixed typo - was "Weakly"
-    14: "Q14 Highest Energy Windows",
-    15: "Q15 Commitments We Must Build Around",
-    16: "Q16 What Helps You Stay Consistent?",
-    17: "Q17 What Usually Pulls You Off Track?",
-    18: "Q18 Stress/Discouragement Response",
-    19: "Q19 Strengths You Bring",
-    20: "Q20 Skill You Want the MOST Help With",
-    21: "Q21 System-Following Confidence",
-    22: "Q22 What Would $300-$800/month Support Right Now?",
-    23: "Q23 Biggest Fear or Hesitation",
-    24: "Q24 If Nothing Changes in 6 Months, What Worries You Most?",
-    25: "Q25 Who You Want to Become in 12 Months",
-    26: "Q26 One Feeling You NEVER Want Again",
-    27: "Q27 One Feeling You WANT as Your Baseline",
-    28: "Q28 Preferred Accountability Style",
-    29: "Q29 Preferred Tracking Style",
-    30: "Q30 Why is NOW the right time to build something?"
-}
+# ---------------------- EXACT FIELD NAMES FROM WORKING CODE ---------------------- #
+DEEPDIVE_FIELDS = [
+    "Q7 Where do you show up online right now?",
+    "Q8 Social Presence Snapshot",
+    "Q9 Content Confidence",
+    "Q10 90-Day Definition of This WORKED",
+    "Q11 Desired Outcome",
+    "Q12 Why That Outcome Matters",
+    "Q13 Weekly Schedule Reality",
+    "Q14 Highest Energy Windows",
+    "Q15 Commitments We Must Build Around",
+    "Q16 What Helps You Stay Consistent?",
+    "Q17 What Usually Pulls You Off Track?",
+    "Q18 Stress/Discouragement Response",
+    "Q19 Strengths You Bring",
+    "Q20 Skill You Want the MOST Help With",
+    "Q21 System-Following Confidence",
+    "Q22 What Would $300–$800/month Support Right Now?",  # EN-DASH, not hyphen!
+    "Q23 Biggest Fear or Hesitation",
+    "Q24 If Nothing Changes in 6 Months, What Worries You Most?",
+    "Q25 Who You Want to Become in 12 Months",
+    "Q26 One Feeling You NEVER Want Again",
+    "Q27 One Feeling You WANT as Your Baseline",
+    "Q28 Preferred Accountability Style",
+    "Q29 Preferred Tracking Style",
+    "Q30 Why is NOW the right time to build something?"
+]
 
 
 # ---------------------- HELPERS ---------------------- #
@@ -117,33 +116,25 @@ def find_survey_row(prospect_email=None, legacy_code=None):
     return None
 
 
-# ---------------------- SAVE ANSWERS WITH CORRECT FIELD NAMES ---------------------- #
+# ---------------------- SAVE ANSWERS - EXACT COPY FROM WORKING CODE ---------------------- #
 
 def save_legacy_survey_to_airtable(record_id, answers):
     """
-    Maps answers to the EXACT Airtable field names
+    Maps answers using EXACT field names from working code
     """
     
-    # Ensure we have exactly 24 answers (Q7-Q30)
-    max_questions = 24
-    padded = list(answers[:max_questions])
+    # Ensure we have exactly 24 answers
+    while len(answers) < 24:
+        answers.append("No response")
+    answers = answers[:24]
     
-    while len(padded) < max_questions:
-        padded.append("No response")
-    
-    # Build payload using EXACT field names from Airtable
+    # Build payload using exact field names from working code
     fields_payload = {}
     
-    for idx, answer in enumerate(padded):
-        q_number = 7 + idx  # Q7, Q8, ... Q30
-        
-        # Get the actual field name from our mapping
-        if q_number in QUESTION_FIELD_MAP:
-            field_name = QUESTION_FIELD_MAP[q_number]
-            fields_payload[field_name] = answer
-            print(f"📝 Setting {field_name[:30]}... = {answer[:50]}...")
-        else:
-            print(f"⚠️ No mapping found for Q{q_number}")
+    for idx, value in enumerate(answers):
+        field_name = DEEPDIVE_FIELDS[idx]
+        fields_payload[field_name] = value
+        print(f"📝 Setting {field_name[:30]}... = {value[:50]}...")
     
     print(f"📡 FINAL PAYLOAD: {len(fields_payload)} fields")
     
@@ -156,11 +147,6 @@ def save_legacy_survey_to_airtable(record_id, answers):
         )
         r.raise_for_status()
         print(f"✅ Airtable PATCH success for record {record_id}")
-        
-        # Log the response for debugging
-        response_data = r.json()
-        updated_count = len(response_data.get('fields', {}))
-        print(f"✅ Successfully updated {updated_count} fields")
         
     except requests.exceptions.HTTPError as e:
         print(f"❌ HTTP ERROR: {e}")
@@ -214,3 +200,4 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+    

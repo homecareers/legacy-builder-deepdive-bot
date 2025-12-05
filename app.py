@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import urllib.parse
 import requests
+import time  # 🔥 REQUIRED for GHL throttling
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -56,33 +57,32 @@ DEEPDIVE_FIELDS = [
 ]
 
 # ---------------------- CORRECT GHL FIELD KEYS ---------------------- #
-# These are the Deep Dive custom field slugs from GHL (no `contact.` prefix)
 
 GHL_FIELDS = [
-    "q7_where_do_you_show_up_online_right_now",        # Q7
-    "q8_social_presence_snapshot",                     # Q8
-    "q9_content_confidence_110",                       # Q9
-    "q10_90day_definition_of_this_worked",             # Q10
-    "q11_desired_outcome",                             # Q11
-    "q12_why_that_outcome_matters",                    # Q12
-    "q13_weekly_schedule_reality",                     # Q13
-    "q14_highest_energy_windows",                      # Q14
-    "q15_commitments_we_must_build_around",            # Q15
-    "q16_what_helps_you_stay_consistent",              # Q16
-    "q17_what_usually_pulls_you_off_track",            # Q17
-    "q18_stressdiscouragement_response",               # Q18
-    "q19_strengths_you_bring",                         # Q19
-    "q20_skill_you_want_the_most_help_with",           # Q20
-    "q21_systemfollowing_confidence_110",              # Q21
-    "q22_what_would_300800month_support_right_now",    # Q22
-    "q23_biggest_fear_or_hesitation",                  # Q23
-    "q24_if_nothing_changes_in_6_months_what_worrie",  # Q24 (truncated in GHL)
-    "q25_who_you_want_to_become_in_12_months",         # Q25
-    "q26_one_feeling_you_never_want_again",            # Q26
-    "q27_one_feeling_you_want_as_your_baseline",       # Q27
-    "q28_preferred_accountability_style",              # Q28
-    "q29_preferred_tracking_style",                    # Q29
-    "q30_why_is_now_the_right_time_to_build_somethi"   # Q30 (truncated in GHL)
+    "q7_where_do_you_show_up_online_right_now",
+    "q8_social_presence_snapshot",
+    "q9_content_confidence_110",
+    "q10_90day_definition_of_this_worked",
+    "q11_desired_outcome",
+    "q12_why_that_outcome_matters",
+    "q13_weekly_schedule_reality",
+    "q14_highest_energy_windows",
+    "q15_commitments_we_must_build_around",
+    "q16_what_helps_you_stay_consistent",
+    "q17_what_usually_pulls_you_off_track",
+    "q18_stressdiscouragement_response",
+    "q19_strengths_you_bring",
+    "q20_skill_you_want_the_most_help_with",
+    "q21_systemfollowing_confidence_110",
+    "q22_what_would_300800month_support_right_now",
+    "q23_biggest_fear_or_hesitation",
+    "q24_if_nothing_changes_in_6_months_what_worrie",
+    "q25_who_you_want_to_become_in_12_months",
+    "q26_one_feeling_you_never_want_again",
+    "q27_one_feeling_you_want_as_your_baseline",
+    "q28_preferred_accountability_style",
+    "q29_preferred_tracking_style",
+    "q30_why_is_now_the_right_time_to_build_somethi"
 ]
 
 # ---------------------- HELPERS ---------------------- #
@@ -104,7 +104,7 @@ def _airtable_url(table, record_id=None, params=None):
 # ---------------------- AIRTABLE LOOKUP ---------------------- #
 
 def find_survey_row(prospect_email=None, legacy_code=None):
-    # 1) Try by Prospect Email
+    # 1) Try by email
     if prospect_email:
         formula = f"{{Prospect Email}} = '{prospect_email}'"
         url = _airtable_url(SURVEY_TABLE, params={"filterByFormula": formula, "maxRecords": 1})
@@ -115,9 +115,9 @@ def find_survey_row(prospect_email=None, legacy_code=None):
             if recs:
                 return recs[0]
         except Exception as e:
-            print("❌ Airtable lookup by email error:", e)
+            print("❌ Airtable lookup error:", e)
 
-    # 2) Fallback by Legacy Code if provided
+    # 2) Try by Legacy Code
     if legacy_code:
         formula = f"{{Legacy Code}} = '{legacy_code}'"
         url = _airtable_url(SURVEY_TABLE, params={"filterByFormula": formula, "maxRecords": 1})
@@ -128,7 +128,7 @@ def find_survey_row(prospect_email=None, legacy_code=None):
             if recs:
                 return recs[0]
         except Exception as e:
-            print("❌ Airtable lookup by Legacy Code error:", e)
+            print("❌ Airtable lookup error:", e)
 
     print("⚠️ No matching Airtable row found.")
     return None
@@ -136,7 +136,6 @@ def find_survey_row(prospect_email=None, legacy_code=None):
 # ---------------------- AIRTABLE SAVE ---------------------- #
 
 def save_legacy_survey_to_airtable(record_id, answers):
-    # Normalize answer length to 24
     while len(answers) < 24:
         answers.append("No response")
     answers = answers[:24]
@@ -157,11 +156,11 @@ def save_legacy_survey_to_airtable(record_id, answers):
     except Exception as e:
         print("❌ Airtable PATCH error:", e)
 
-# ---------------------- GHL SYNC — FIELD-BY-FIELD (WORKING PATTERN) ---------------------- #
+# ---------------------- GHL SYNC — FIELD-BY-FIELD WITH THROTTLING ---------------------- #
 
 def push_legacy_survey_to_ghl(email, answers):
     if not GHL_API_KEY or not GHL_LOCATION_ID:
-        print("⚠️ GHL disabled — missing credentials")
+        print("⚠️ Missing GHL credentials")
         return
 
     headers = {
@@ -169,7 +168,7 @@ def push_legacy_survey_to_ghl(email, answers):
         "Content-Type": "application/json"
     }
 
-    # --- Lookup contact by email (same pattern as before) --- #
+    # --- Lookup contact --- #
     lookup_url = f"{GHL_BASE_URL}/contacts/?email={urllib.parse.quote(email)}&locationId={GHL_LOCATION_ID}"
 
     try:
@@ -185,35 +184,29 @@ def push_legacy_survey_to_ghl(email, answers):
         contact = contacts[0]
         contact_id = contact.get("id")
 
-        first_name = contact.get("firstName") or ""
-        last_name = contact.get("lastName") or ""
-        full_name = f"{first_name} {last_name}".strip() or contact.get("email") or "Unknown"
-
-        print(f"📌 Updating GHL Contact — {full_name} ({email}), ID: {contact_id}")
+        print(f"📌 Updating GHL contact ID: {contact_id}")
 
     except Exception as e:
         print(f"❌ GHL lookup error: {e}")
         return
 
-    # --- Normalize answers --- #
+    # Normalize Deep Dive answers
     while len(answers) < 24:
         answers.append("No response")
     answers = answers[:24]
 
-    # --- Build list of {field_key: value} dicts (one per field) --- #
+    # Prepare individual field updates
     field_updates = []
     for i, field_key in enumerate(GHL_FIELDS):
-        if not field_key:
-            continue
         field_updates.append({field_key: answers[i]})
 
-    # --- Update each field individually, with fallback --- #
+    # --- Update each field with throttle --- #
     for field_update in field_updates:
         try:
             field_name = list(field_update.keys())[0]
             field_value = field_update[field_name]
 
-            # Primary attempt: official customField wrapper
+            # Primary attempt
             response = requests.put(
                 f"{GHL_BASE_URL}/contacts/{contact_id}",
                 headers=headers,
@@ -222,30 +215,28 @@ def push_legacy_survey_to_ghl(email, answers):
             )
 
             if response.status_code == 200:
-                short_val = str(field_value)
-                if len(short_val) > 30:
-                    short_val = short_val[:30] + "..."
-                print(f"✅ Updated {field_name}: {short_val}")
+                print(f"✅ Updated {field_name}")
             else:
-                print(f"❌ Failed to update {field_name} (status {response.status_code})")
-                print(response.text[:200])
+                print(f"❌ Failed primary update for {field_name} (status {response.status_code})")
 
-                # Fallback attempt: legacy direct payload
+                # Fallback attempt
                 alt_response = requests.put(
                     f"{GHL_BASE_URL}/contacts/{contact_id}",
                     headers=headers,
                     json=field_update,
                     timeout=20,
                 )
+
                 if alt_response.status_code == 200:
-                    print(f"✅ Updated {field_name} with fallback format")
+                    print(f"✅ Fallback succeeded for {field_name}")
                 else:
-                    print(f"❌ Fallback also failed for {field_name}: {alt_response.status_code}")
-                    print(alt_response.text[:200])
+                    print(f"❌ Fallback failed for {field_name} (status {alt_response.status_code})")
+
+            # 🔥 REQUIRED: prevent GHL 429 rate-limit failures
+            time.sleep(0.5)
 
         except Exception as e:
-            print(f"Error updating field {field_update}: {e}")
-            continue
+            print(f"❌ Error updating field {field_update}: {e}")
 
 # ---------------------- ROUTES ---------------------- #
 
@@ -255,6 +246,7 @@ def index():
 
 @app.route("/submit", methods=["POST"])
 def submit_legacy_survey():
+
     data = request.json or {}
     email = (data.get("email") or "").strip()
     answers = data.get("answers") or []
@@ -262,18 +254,13 @@ def submit_legacy_survey():
     if not email:
         return jsonify({"error": "Missing email"}), 400
 
-    # Find the existing Survey Responses row for this prospect
     record = find_survey_row(prospect_email=email)
     if not record:
-        # No row found — still redirect, but nothing to update
         return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})
 
     record_id = record["id"]
 
-    # Update Airtable Deep Dive answers
     save_legacy_survey_to_airtable(record_id, answers)
-
-    # Update GHL Deep Dive custom fields
     push_legacy_survey_to_ghl(email, answers)
 
     return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})

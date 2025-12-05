@@ -156,7 +156,7 @@ def save_legacy_survey_to_airtable(record_id, answers):
     except Exception as e:
         print("❌ Airtable PATCH error:", e)
 
-# ---------------------- GHL SYNC (CORRECTED EMAIL LOOKUP) ---------------------- #
+# ---------------------- GHL SYNC (FIXED NAME HANDLING) ---------------------- #
 
 def push_legacy_survey_to_ghl(email, answers):
 
@@ -177,8 +177,8 @@ def push_legacy_survey_to_ghl(email, answers):
         r.raise_for_status()
         data = r.json()
         
-        # Debug: See what GHL returns
-        print(f"🔍 GHL lookup response: {data}")
+        # Debug: See what GHL returns (commenting out for cleaner logs)
+        # print(f"🔍 GHL lookup response: {data}")
         
         contacts = data.get("contacts", [])
         if not contacts:
@@ -187,10 +187,18 @@ def push_legacy_survey_to_ghl(email, answers):
 
         contact = contacts[0]
         contact_id = contact.get("id")
-        name = contact.get("firstName", "") + " " + contact.get("lastName", "")
-        name = name.strip() or contact.get("name") or "Unknown"
+        
+        # FIXED: Handle None values properly
+        first_name = contact.get("firstName") or ""
+        last_name = contact.get("lastName") or ""
+        full_name = f"{first_name} {last_name}".strip()
+        
+        # If no first/last name, try other fields
+        if not full_name:
+            full_name = contact.get("contactName") or contact.get("name") or contact.get("email") or "Unknown"
 
-        print(f"📌 Updating GHL Contact — {name} ({email}), ID: {contact_id}")
+        print(f"📌 Updating GHL Contact — {full_name} ({email}), ID: {contact_id}")
+        
     except Exception as e:
         print(f"❌ GHL lookup error: {e}")
         return
@@ -215,14 +223,14 @@ def push_legacy_survey_to_ghl(email, answers):
         
         # Debug: See what we're sending
         print(f"📤 Sending to GHL: {update_url}")
-        print(f"📦 Payload preview: {list(custom_fields.keys())[:3]}...")  # Show first 3 field names
+        # print(f"📦 Payload preview: {list(custom_fields.keys())[:3]}...")  # Show first 3 field names
         
         r = requests.put(update_url, headers=headers, json=payload, timeout=20)
         
         # Check the response more carefully
         if r.status_code == 200:
             print("✅ GHL updated successfully (email lookup)")
-            print(f"✅ Response: {r.json()}")
+            # print(f"✅ Response: {r.json()}")  # Commenting out for cleaner logs
         else:
             print(f"❌ GHL update failed with status {r.status_code}")
             print(f"❌ Response: {r.text}")

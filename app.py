@@ -59,7 +59,6 @@ DEEPDIVE_FIELDS = [
 # ---------------------- CORRECT GHL FIELD KEYS FROM YOUR PDF ---------------------- #
 
 GHL_FIELDS = [
-    "GHL_FIELDS = [
     "q7_where_do_you_show_up_online_right_now",  # Q7
     "q8_social_presence_snapshot",  # Q8
     "q9_content_confidence_110",  # Q9

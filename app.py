@@ -40,50 +40,6 @@ def _airtable_url(table, record_id=None, params=None):
     return base
 
 
-# ---------------------- FIELD ID MAP ---------------------- #
-# This is the KEY FIX: we fetch Airtable’s true internal field IDs
-
-def get_field_id_map():
-    """Fetch Airtable field metadata and return {label: fieldId} mapping."""
-    url = _airtable_url(SURVEY_TABLE, params={"maxRecords": 1})
-
-    try:
-        r = requests.get(url, headers=_airtable_headers(), timeout=20)
-        r.raise_for_status()
-
-        # Airtable returns field info ONLY inside 'records'
-        # but internal API always exposes fields under 'fields'
-        sample = r.json().get("records", [])
-        if not sample:
-            print("⚠️ No sample record found for field extraction.")
-            return {}
-
-        fields = sample[0].get("fields", {})
-        # OPTIONAL: If fields are empty (new record), no problem.
-        # But this only gives us field NAMES, not IDs — so we use the metadata API:
-        pass
-
-    except Exception as e:
-        print(f"❌ Error fetching field names: {e}")
-
-    # REAL FIX: use Airtable Metadata API v2 (unofficial but stable)
-    meta_url = f"https://api.airtable.com/v0/meta/bases/{AIRTABLE_BASE_ID}/tables"
-    try:
-        r = requests.get(meta_url, headers=_airtable_headers(), timeout=20)
-        r.raise_for_status()
-        tables = r.json().get("tables", [])
-        for t in tables:
-            if t["name"] == SURVEY_TABLE:
-                field_map = {f["name"]: f["id"] for f in t["fields"]}
-                print("🔐 FIELD ID MAP LOADED:", field_map)
-                return field_map
-
-    except Exception as e:
-        print(f"❌ Error pulling metadata API: {e}")
-
-    return {}
-
-
 # ---------------------- AIRTABLE LOOKUP ---------------------- #
 
 def find_survey_row(prospect_email=None, legacy_code=None):
@@ -132,35 +88,31 @@ def find_survey_row(prospect_email=None, legacy_code=None):
     return None
 
 
-# ---------------------- SAVE ANSWERS (WITH FIELD IDS) ---------------------- #
+# ---------------------- SAVE ANSWERS (SIMPLIFIED) ---------------------- #
 
 def save_legacy_survey_to_airtable(record_id, answers):
-
-    # Get Airtable internal field IDs
-    field_ids = get_field_id_map()
-
-    # MUST map Q7–Q30 → 24 answers
+    """
+    SIMPLIFIED VERSION: Uses field names directly instead of field IDs
+    """
+    
+    # Ensure we have exactly 24 answers (Q7-Q30)
     max_questions = 24
     padded = list(answers[:max_questions])
-
+    
     while len(padded) < max_questions:
         padded.append("No response")
-
+    
+    # Build payload using field names directly
     fields_payload = {}
-
+    
     for idx, answer in enumerate(padded):
-        q_number = 7 + idx
-        label = f"Q{q_number}"
-
-        if label not in field_ids:
-            print(f"❌ Field label missing in ID map: {label}")
-            continue
-
-        real_field_id = field_ids[label]
-        fields_payload[real_field_id] = answer
-
-    print("📡 FINAL PATCH PAYLOAD:", fields_payload)
-
+        q_number = 7 + idx  # Q7, Q8, ... Q30
+        field_name = f"Q{q_number}"
+        fields_payload[field_name] = answer
+        print(f"📝 Setting {field_name} = {answer[:50]}...")  # Log first 50 chars
+    
+    print(f"📡 FINAL PAYLOAD: {len(fields_payload)} fields")
+    
     try:
         r = requests.patch(
             _airtable_url(SURVEY_TABLE, record_id),
@@ -170,7 +122,14 @@ def save_legacy_survey_to_airtable(record_id, answers):
         )
         r.raise_for_status()
         print(f"✅ Airtable PATCH success for record {record_id}")
-
+        
+        # Log the response for debugging
+        response_data = r.json()
+        print(f"✅ Updated fields: {list(response_data.get('fields', {}).keys())}")
+        
+    except requests.exceptions.HTTPError as e:
+        print(f"❌ HTTP ERROR: {e}")
+        print(f"❌ Response: {e.response.text if e.response else 'No response'}")
     except Exception as e:
         print(f"❌ ERROR: Airtable PATCH failed: {e}")
 
@@ -189,6 +148,8 @@ def submit_legacy_survey():
         data = request.json or {}
         email = (data.get("email") or "").strip()
         answers = data.get("answers") or []
+        
+        print(f"📨 Received submission: email={email}, answers count={len(answers)}")
 
         if not email:
             return jsonify({"error": "Missing email"}), 400
@@ -199,6 +160,7 @@ def submit_legacy_survey():
             return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})
 
         record_id = record["id"]
+        print(f"📌 Found record ID: {record_id}")
 
         save_legacy_survey_to_airtable(record_id, answers)
 
@@ -217,3 +179,4 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+    

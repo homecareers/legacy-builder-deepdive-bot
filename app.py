@@ -12,7 +12,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
-SURVEY_TABLE = "Survey Responses"  # Hard-coded for stability
+SURVEY_TABLE = "Survey Responses"
 
 LEGACY_SURVEY_REDIRECT_URL = (
     os.getenv("LEGACY_SURVEY_REDIRECT_URL")
@@ -26,7 +26,7 @@ GHL_API_KEY = os.getenv("GHL_API_KEY")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID")
 GHL_BASE_URL = "https://rest.gohighlevel.com/v1"
 
-# ---------------------- EXACT FIELD NAMES (UNCHANGED) ---------------------- #
+# ---------------------- AIRTABLE Q-FIELDS ---------------------- #
 
 DEEPDIVE_FIELDS = [
     "Q7 Where do you show up online right now?",
@@ -44,7 +44,7 @@ DEEPDIVE_FIELDS = [
     "Q19 Strengths You Bring",
     "Q20 Skill You Want the MOST Help With",
     "Q21 System-Following Confidence",
-    "Q22 What Would $300–$800/month Support Right Now?", 
+    "Q22 What Would $300–$800/month Support Right Now?",
     "Q23 Biggest Fear or Hesitation",
     "Q24 If Nothing Changes in 6 Months, What Worries You Most?",
     "Q25 Who You Want to Become in 12 Months",
@@ -55,8 +55,8 @@ DEEPDIVE_FIELDS = [
     "Q30 Why is NOW the right time to build something?"
 ]
 
-# ---------------------- GHL FIELD KEYS (RESTORED FROM YOUR PROJECT FILES) ---------------------- #
-
+# ---------------------- GHL FIELD KEYS ---------------------- #
+# (These came from your project file — unchanged)
 GHL_FIELDS = [
     "q7__where_do_you_show_up_online_right_now_",
     "q8__social_presence_snapshot",
@@ -84,7 +84,6 @@ GHL_FIELDS = [
     "q30__why_is_now_the_right_time_to_build_something_"
 ]
 
-
 # ---------------------- HELPERS ---------------------- #
 
 def _airtable_headers():
@@ -101,7 +100,7 @@ def _airtable_url(table, record_id=None, params=None):
         return f"{base}?{urllib.parse.urlencode(params)}"
     return base
 
-# ---------------------- AIRTABLE LOOKUP (UNCHANGED) ---------------------- #
+# ---------------------- AIRTABLE LOOKUP ---------------------- #
 
 def find_survey_row(prospect_email=None, legacy_code=None):
 
@@ -113,7 +112,6 @@ def find_survey_row(prospect_email=None, legacy_code=None):
             r.raise_for_status()
             recs = r.json().get("records", [])
             if recs:
-                print("✅ Email lookup success")
                 return recs[0]
         except:
             pass
@@ -126,7 +124,6 @@ def find_survey_row(prospect_email=None, legacy_code=None):
             r.raise_for_status()
             recs = r.json().get("records", [])
             if recs:
-                print("✅ Legacy Code lookup success")
                 return recs[0]
         except:
             pass
@@ -134,8 +131,7 @@ def find_survey_row(prospect_email=None, legacy_code=None):
     print("⚠️ No matching Airtable row found.")
     return None
 
-
-# ---------------------- SAVE ANSWERS (UNCHANGED) ---------------------- #
+# ---------------------- AIRTABLE SAVE ---------------------- #
 
 def save_legacy_survey_to_airtable(record_id, answers):
 
@@ -157,17 +153,15 @@ def save_legacy_survey_to_airtable(record_id, answers):
         )
         r.raise_for_status()
         print("✅ Airtable updated")
-
     except Exception as e:
         print("❌ Airtable PATCH error:", e)
 
-
-# ---------------------- GHL SYNC (RESTORED PROPERLY) ---------------------- #
+# ---------------------- GHL SYNC (EMAIL ONLY LOOKUP) ---------------------- #
 
 def push_legacy_survey_to_ghl(email, answers):
 
     if not GHL_API_KEY or not GHL_LOCATION_ID:
-        print("⚠️ GHL disabled — missing env vars")
+        print("⚠️ GHL disabled — missing credentials")
         return
 
     headers = {
@@ -175,7 +169,7 @@ def push_legacy_survey_to_ghl(email, answers):
         "Content-Type": "application/json"
     }
 
-    # 1) Lookup contact
+    # ******** EMAIL-ONLY LOOKUP (ONLY CHANGE YOU REQUESTED) ********
     lookup_url = f"{GHL_BASE_URL}/contacts/?email={urllib.parse.quote(email)}&locationId={GHL_LOCATION_ID}"
 
     try:
@@ -183,23 +177,23 @@ def push_legacy_survey_to_ghl(email, answers):
         r.raise_for_status()
         contacts = r.json().get("contacts", [])
         if not contacts:
-            print("⚠️ No GHL contact found")
+            print(f"❌ No GHL contact found for email: {email}")
             return
-        contact_id = contacts[0]["id"]
-        print("📌 GHL contact:", contact_id)
 
+        contact = contacts[0]
+        contact_id = contact.get("id")
+        name = contact.get("fullName") or "Unknown"
+
+        print(f"📌 Updating GHL Contact — {name} ({email})")
     except Exception as e:
         print("❌ GHL lookup error:", e)
         return
 
-    # 2) Ensure answer count
     while len(answers) < 24:
         answers.append("No response")
     answers = answers[:24]
 
-    # 3) Build update payload
     custom_fields = []
-
     for i in range(24):
         custom_fields.append({
             "id": GHL_FIELDS[i],
@@ -208,17 +202,15 @@ def push_legacy_survey_to_ghl(email, answers):
 
     payload = {"customField": custom_fields}
 
-    # 4) Update GHL contact
     try:
         update_url = f"{GHL_BASE_URL}/contacts/{contact_id}"
         r = requests.put(update_url, headers=headers, json=payload, timeout=20)
         r.raise_for_status()
-        print("✅ GHL updated")
+        print("✅ GHL updated successfully (email lookup)")
     except Exception as e:
         print("❌ GHL update error:", e)
 
-
-# ---------------------- ROUTES (UNCHANGED EXCEPT ONE CALL) ---------------------- #
+# ---------------------- ROUTES ---------------------- #
 
 @app.route("/")
 def index():
@@ -242,7 +234,7 @@ def submit_legacy_survey():
 
     save_legacy_survey_to_airtable(record_id, answers)
 
-    # ⚡ ONLY NEW LINE ADDED — NOTHING ELSE TOUCHED
+    # ******** ONLY NEW CALL USING EMAIL-ONLY LOOKUP ********
     push_legacy_survey_to_ghl(email, answers)
 
     return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})

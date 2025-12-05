@@ -21,6 +21,35 @@ LEGACY_SURVEY_REDIRECT_URL = (
     or "https://poweredbylegacycode.com/activation"
 )
 
+# ---------------------- FIELD NAMES MAPPING ---------------------- #
+# Map question numbers to ACTUAL Airtable field names
+QUESTION_FIELD_MAP = {
+    7: "Q7 Where do you see your team growing fastest in the next 90 days?",
+    8: "Q8 Social Presence Snapshot",
+    9: "Q9 Content Confidence",
+    10: "Q10 90-Day Definition of This WORKED",
+    11: "Q11 Desired Outcome",
+    12: "Q12 Why That Outcome Matters",
+    13: "Q13 Weakly Schedule Reality",
+    14: "Q14 Highest Energy Windows",
+    15: "Q15 Commitments We Must Build Around",
+    16: "Q16 What Helps You Stay Consistent?",
+    17: "Q17 What Usually Pulls You Off Track?",
+    18: "Q18 Stress/Discouragement Response",
+    19: "Q19 Strengths You Bring",
+    20: "Q20 Skill You want the MOST Help With",
+    21: "Q21 System-Following Confidence",
+    22: "Q22 What Would $300-$800/month Support Right Now?",
+    23: "Q23 Biggest Fear or Hesitation",
+    24: "Q24 If Nothing Changes in 6 Months, What Worries You Most?",
+    25: "Q25 Who You Want to Become in 12 Months",
+    26: "Q26 One Feeling You NEVER Want Again",
+    27: "Q27 One Feeling You WANT as Your Baseline",
+    28: "Q28 Preferred Accountability Style",
+    29: "Q29 Preferred Tracking Style",
+    30: "Q30 Why is NOW the right time to build something?"
+}
+
 
 # ---------------------- HELPERS ---------------------- #
 
@@ -88,11 +117,11 @@ def find_survey_row(prospect_email=None, legacy_code=None):
     return None
 
 
-# ---------------------- SAVE ANSWERS (SIMPLIFIED) ---------------------- #
+# ---------------------- SAVE ANSWERS WITH CORRECT FIELD NAMES ---------------------- #
 
 def save_legacy_survey_to_airtable(record_id, answers):
     """
-    SIMPLIFIED VERSION: Uses field names directly instead of field IDs
+    Maps answers to the ACTUAL Airtable field names
     """
     
     # Ensure we have exactly 24 answers (Q7-Q30)
@@ -102,14 +131,19 @@ def save_legacy_survey_to_airtable(record_id, answers):
     while len(padded) < max_questions:
         padded.append("No response")
     
-    # Build payload using field names directly
+    # Build payload using ACTUAL field names from Airtable
     fields_payload = {}
     
     for idx, answer in enumerate(padded):
         q_number = 7 + idx  # Q7, Q8, ... Q30
-        field_name = f"Q{q_number}"
-        fields_payload[field_name] = answer
-        print(f"📝 Setting {field_name} = {answer[:50]}...")  # Log first 50 chars
+        
+        # Get the actual field name from our mapping
+        if q_number in QUESTION_FIELD_MAP:
+            field_name = QUESTION_FIELD_MAP[q_number]
+            fields_payload[field_name] = answer
+            print(f"📝 Setting {field_name[:30]}... = {answer[:50]}...")
+        else:
+            print(f"⚠️ No mapping found for Q{q_number}")
     
     print(f"📡 FINAL PAYLOAD: {len(fields_payload)} fields")
     
@@ -125,7 +159,8 @@ def save_legacy_survey_to_airtable(record_id, answers):
         
         # Log the response for debugging
         response_data = r.json()
-        print(f"✅ Updated fields: {list(response_data.get('fields', {}).keys())}")
+        updated_count = len(response_data.get('fields', {}))
+        print(f"✅ Successfully updated {updated_count} fields")
         
     except requests.exceptions.HTTPError as e:
         print(f"❌ HTTP ERROR: {e}")
@@ -179,4 +214,3 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-    

@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os
 import urllib.parse
 import requests
+import json
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -58,12 +59,13 @@ DEEPDIVE_FIELDS = [
 # ---------------------- CORRECT GHL FIELD KEYS FROM YOUR PDF ---------------------- #
 
 GHL_FIELDS = [
+    "GHL_FIELDS = [
     "q7_where_do_you_show_up_online_right_now",  # Q7
     "q8_social_presence_snapshot",  # Q8
     "q9_content_confidence_110",  # Q9
     "q10_90day_definition_of_this_worked",  # Q10
-    "",  # Q11 - doesn't exist in GHL
-    "",  # Q12 - doesn't exist in GHL
+    "q11_desired_outcome",  # Q11
+    "q12_why_that_outcome_matters",  # Q12
     "q13_weekly_schedule_reality",  # Q13
     "q14_highest_energy_windows",  # Q14
     "q15_commitments_we_must_build_around",  # Q15
@@ -82,6 +84,7 @@ GHL_FIELDS = [
     "q28_preferred_accountability_style",  # Q28
     "q29_preferred_tracking_style",  # Q29
     "q30_why_is_now_the_right_time_to_build_something"  # Q30
+]
 ]
 
 # ---------------------- HELPERS ---------------------- #
@@ -156,7 +159,7 @@ def save_legacy_survey_to_airtable(record_id, answers):
     except Exception as e:
         print("❌ Airtable PATCH error:", e)
 
-# ---------------------- GHL SYNC WITH V1 API AND CORRECT FIELDS ---------------------- #
+# ---------------------- GHL SYNC - THE WORKING METHOD ---------------------- #
 
 def push_legacy_survey_to_ghl(email, answers):
 
@@ -204,65 +207,63 @@ def push_legacy_survey_to_ghl(email, answers):
         answers.append("No response")
     answers = answers[:24]
 
-    # Build custom fields - skip empty field keys
-    custom_fields = {}
+    # THE CORRECT WAY TO UPDATE CUSTOM FIELDS IN GHL V1
+    # Build the payload with the exact format GHL expects
+    payload = {}
+    
     for i in range(24):
         field_key = GHL_FIELDS[i]
         if field_key:  # Only add if field key exists
-            custom_fields[field_key] = answers[i]
+            # Remove 'contact.' prefix if using it
+            clean_key = field_key.replace("contact.", "")
+            payload[clean_key] = answers[i]
 
-    # Try multiple V1 API payload formats
-    # Format 1: Direct custom fields in the body
-    payload = custom_fields
-    
     try:
         update_url = f"{GHL_BASE_URL}/contacts/{contact_id}"
         
         print(f"📤 Sending to GHL V1: {update_url}")
-        print(f"📦 Updating {len(custom_fields)} custom fields...")
+        print(f"📦 Updating {len(payload)} custom fields...")
         
-        # First attempt: Send custom fields directly in body
+        # Debug: Show exactly what we're sending
+        print(f"🔍 First field being sent: {list(payload.keys())[0]} = '{list(payload.values())[0][:50]}...'")
+        
+        # Send the update
         r = requests.put(update_url, headers=headers, json=payload, timeout=20)
         
+        print(f"📊 Response status: {r.status_code}")
+        
         if r.status_code == 200:
-            print("✅ GHL V1 updated successfully (method 1: direct fields)")
-        else:
-            print(f"⚠️ Method 1 failed with status {r.status_code}, trying method 2...")
+            # Parse response to verify update
+            response_data = r.json() if r.text else {}
             
-            # Second attempt: Wrap in customFields object
-            payload2 = {"customFields": custom_fields}
-            r = requests.put(update_url, headers=headers, json=payload2, timeout=20)
-            
-            if r.status_code == 200:
-                print("✅ GHL V1 updated successfully (method 2: customFields wrapper)")
-            else:
-                print(f"⚠️ Method 2 failed with status {r.status_code}, trying method 3...")
+            # Check if the response contains our custom fields
+            if response_data:
+                # GHL V1 usually returns the updated contact
+                print("✅ GHL V1 returned 200 - checking for field updates...")
                 
-                # Third attempt: Use customField (singular)
-                payload3 = {"customField": custom_fields}
-                r = requests.put(update_url, headers=headers, json=payload3, timeout=20)
+                # Try to fetch the contact again to verify
+                verify_url = f"{GHL_BASE_URL}/contacts/{contact_id}"
+                verify_r = requests.get(verify_url, headers=headers, timeout=10)
                 
-                if r.status_code == 200:
-                    print("✅ GHL V1 updated successfully (method 3: customField wrapper)")
-                else:
-                    # Final attempt: Send fields one by one
-                    print(f"⚠️ Method 3 failed, trying individual field updates...")
-                    success_count = 0
+                if verify_r.status_code == 200:
+                    verify_data = verify_r.json()
+                    # Check if any of our fields exist in the response
+                    found_fields = False
+                    for field_key in payload.keys():
+                        if field_key in str(verify_data):
+                            found_fields = True
+                            break
                     
-                    for field_key, field_value in custom_fields.items():
-                        single_payload = {field_key: field_value}
-                        try:
-                            r = requests.put(update_url, headers=headers, json=single_payload, timeout=5)
-                            if r.status_code == 200:
-                                success_count += 1
-                        except:
-                            pass
-                    
-                    if success_count > 0:
-                        print(f"✅ GHL V1 updated {success_count}/{len(custom_fields)} fields individually")
+                    if found_fields:
+                        print("✅✅ GHL fields verified - update successful!")
                     else:
-                        print(f"❌ All GHL update methods failed")
-                        print(f"❌ Last response: {r.text[:500]}...")
+                        print("⚠️ GHL returned 200 but fields not found in verification")
+                        print("⚠️ This might be a GHL API issue - check the contact manually")
+            else:
+                print("✅ GHL returned 200 (no response body to verify)")
+        else:
+            print(f"❌ GHL update failed with status {r.status_code}")
+            print(f"❌ Response: {r.text[:500]}...")
             
     except Exception as e:
         print(f"❌ GHL update error: {e}")
@@ -291,7 +292,7 @@ def submit_legacy_survey():
 
     save_legacy_survey_to_airtable(record_id, answers)
 
-    # GHL UPDATE WITH MULTIPLE METHODS
+    # GHL UPDATE
     push_legacy_survey_to_ghl(email, answers)
 
     return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})

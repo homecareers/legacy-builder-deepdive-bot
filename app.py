@@ -85,7 +85,6 @@ GHL_FIELDS = [
     "q29_preferred_tracking_style",  # Q29
     "q30_why_is_now_the_right_time_to_build_something"  # Q30
 ]
-]
 
 # ---------------------- HELPERS ---------------------- #
 

@@ -56,33 +56,33 @@ DEEPDIVE_FIELDS = [
     "Q30 Why is NOW the right time to build something?"
 ]
 
-# ---------------------- CORRECT GHL FIELD KEYS FROM YOUR PDF ---------------------- #
+# ---------------------- CORRECT GHL FIELD KEYS (NO contact.) ---------------------- #
 
 GHL_FIELDS = [
-    "q7_where_do_you_show_up_online_right_now",  # Q7
-    "q8_social_presence_snapshot",  # Q8
-    "q9_content_confidence_110",  # Q9
-    "q10_90day_definition_of_this_worked",  # Q10
-    "q11_desired_outcome",  # Q11
-    "q12_why_that_outcome_matters",  # Q12
-    "q13_weekly_schedule_reality",  # Q13
-    "q14_highest_energy_windows",  # Q14
-    "q15_commitments_we_must_build_around",  # Q15
-    "q16_what_helps_you_stay_consistent",  # Q16
-    "q17_what_usually_pulls_you_off_track",  # Q17
-    "q18_stressdiscouragement_response",  # Q18
-    "q19_strengths_you_bring",  # Q19
-    "q20_skill_you_want_the_most_help_with",  # Q20
-    "q21__systemfollowing_confidence_110",  # Q21
-    "q22_what_would_300800month_support_right_now",  # Q22
-    "q23__biggest_fear_or_hesitation",  # Q23
-    "q24__if_nothing_changes_in_6_months_what_worries_you_most",  # Q24
-    "q25_who_you_want_to_become_in_12_months",  # Q25
-    "q26__one_feeling_you_never_want_again",  # Q26
-    "q27__one_feeling_you_want_as_your_baseline",  # Q27
-    "q28_preferred_accountability_style",  # Q28
-    "q29_preferred_tracking_style",  # Q29
-    "q30_why_is_now_the_right_time_to_build_something"  # Q30
+    "q7_where_do_you_show_up_online_right_now",
+    "q8_social_presence_snapshot",
+    "q9_content_confidence_110",
+    "q10_90day_definition_of_this_worked",
+    "q11_desired_outcome",
+    "q12_why_that_outcome_matters",
+    "q13_weekly_schedule_reality",
+    "q14_highest_energy_windows",
+    "q15_commitments_we_must_build_around",
+    "q16_what_helps_you_stay_consistent",
+    "q17_what_usually_pulls_you_off_track",
+    "q18_stressdiscouragement_response",
+    "q19_strengths_you_bring",
+    "q20_skill_you_want_the_most_help_with",
+    "q21_systemfollowing_confidence_110",
+    "q22_what_would_300800month_support_right_now",
+    "q23_biggest_fear_or_hesitation",
+    "q24_if_nothing_changes_in_6_months_what_worrie",
+    "q25_who_you_want_to_become_in_12_months",
+    "q26_one_feeling_you_never_want_again",
+    "q27_one_feeling_you_want_as_your_baseline",
+    "q28_preferred_accountability_style",
+    "q29_preferred_tracking_style",
+    "q30_why_is_now_the_right_time_to_build_somethi"
 ]
 
 # ---------------------- HELPERS ---------------------- #
@@ -157,7 +157,7 @@ def save_legacy_survey_to_airtable(record_id, answers):
     except Exception as e:
         print("❌ Airtable PATCH error:", e)
 
-# ---------------------- GHL SYNC - THE WORKING METHOD ---------------------- #
+# ---------------------- GHL SYNC (OLYMPUS VERSION) ---------------------- #
 
 def push_legacy_survey_to_ghl(email, answers):
 
@@ -170,14 +170,13 @@ def push_legacy_survey_to_ghl(email, answers):
         "Content-Type": "application/json"
     }
 
-    # V1 API EMAIL LOOKUP
     lookup_url = f"{GHL_BASE_URL}/contacts/?email={urllib.parse.quote(email)}&locationId={GHL_LOCATION_ID}"
 
     try:
         r = requests.get(lookup_url, headers=headers, timeout=20)
         r.raise_for_status()
         data = r.json()
-        
+
         contacts = data.get("contacts", [])
         if not contacts:
             print(f"❌ No GHL contact found for email: {email}")
@@ -185,84 +184,45 @@ def push_legacy_survey_to_ghl(email, answers):
 
         contact = contacts[0]
         contact_id = contact.get("id")
-        
-        # Handle None values properly
+
         first_name = contact.get("firstName") or ""
         last_name = contact.get("lastName") or ""
-        full_name = f"{first_name} {last_name}".strip()
-        
-        if not full_name:
-            full_name = contact.get("contactName") or contact.get("name") or contact.get("email") or "Unknown"
+        full_name = f"{first_name} {last_name}".strip() or contact.get("email")
 
         print(f"📌 Updating GHL Contact — {full_name} ({email}), ID: {contact_id}")
-        
+
     except Exception as e:
         print(f"❌ GHL lookup error: {e}")
         return
 
-    # Prepare answers
     while len(answers) < 24:
         answers.append("No response")
     answers = answers[:24]
 
-    # THE CORRECT WAY TO UPDATE CUSTOM FIELDS IN GHL V1
-    # Build the payload with the exact format GHL expects
-    payload = {}
-    
-    for i in range(24):
-        field_key = GHL_FIELDS[i]
-        if field_key:  # Only add if field key exists
-            # Remove 'contact.' prefix if using it
-            clean_key = field_key.replace("contact.", "")
-            payload[clean_key] = answers[i]
+    custom_fields = {}
+    for i, field_key in enumerate(GHL_FIELDS):
+        if not field_key:
+            continue
+        custom_fields[field_key] = answers[i]
+
+    payload = {
+        "customField": custom_fields
+    }
 
     try:
         update_url = f"{GHL_BASE_URL}/contacts/{contact_id}"
-        
-        print(f"📤 Sending to GHL V1: {update_url}")
-        print(f"📦 Updating {len(payload)} custom fields...")
-        
-        # Debug: Show exactly what we're sending
-        print(f"🔍 First field being sent: {list(payload.keys())[0]} = '{list(payload.values())[0][:50]}...'")
-        
-        # Send the update
-        r = requests.put(update_url, headers=headers, json=payload, timeout=20)
-        
-        print(f"📊 Response status: {r.status_code}")
-        
-        if r.status_code == 200:
-            # Parse response to verify update
-            response_data = r.json() if r.text else {}
-            
-            # Check if the response contains our custom fields
-            if response_data:
-                # GHL V1 usually returns the updated contact
-                print("✅ GHL V1 returned 200 - checking for field updates...")
-                
-                # Try to fetch the contact again to verify
-                verify_url = f"{GHL_BASE_URL}/contacts/{contact_id}"
-                verify_r = requests.get(verify_url, headers=headers, timeout=10)
-                
-                if verify_r.status_code == 200:
-                    verify_data = verify_r.json()
-                    # Check if any of our fields exist in the response
-                    found_fields = False
-                    for field_key in payload.keys():
-                        if field_key in str(verify_data):
-                            found_fields = True
-                            break
-                    
-                    if found_fields:
-                        print("✅✅ GHL fields verified - update successful!")
-                    else:
-                        print("⚠️ GHL returned 200 but fields not found in verification")
-                        print("⚠️ This might be a GHL API issue - check the contact manually")
-            else:
-                print("✅ GHL returned 200 (no response body to verify)")
+        print(f"📤 Sending Deep Dive to GHL: {update_url}")
+        print(f"📦 Updating {len(custom_fields)} fields...")
+
+        resp = requests.put(update_url, headers=headers, json=payload, timeout=20)
+
+        print(f"📊 GHL response status: {resp.status_code}")
+        if resp.status_code == 200:
+            print("✅ Deep Dive custom fields updated in GHL.")
         else:
-            print(f"❌ GHL update failed with status {r.status_code}")
-            print(f"❌ Response: {r.text[:500]}...")
-            
+            print("❌ GHL update failed.")
+            print(resp.text[:500])
+
     except Exception as e:
         print(f"❌ GHL update error: {e}")
 
@@ -290,7 +250,6 @@ def submit_legacy_survey():
 
     save_legacy_survey_to_airtable(record_id, answers)
 
-    # GHL UPDATE
     push_legacy_survey_to_ghl(email, answers)
 
     return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})

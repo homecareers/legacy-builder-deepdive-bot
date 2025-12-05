@@ -56,7 +56,7 @@ DEEPDIVE_FIELDS = [
 ]
 
 # ---------------------- GHL FIELD KEYS ---------------------- #
-# (These came from your project file — unchanged)
+
 GHL_FIELDS = [
     "q7_where_do_you_show_up_online_right_now_",
     "q8_social_presence_snapshot",
@@ -156,7 +156,7 @@ def save_legacy_survey_to_airtable(record_id, answers):
     except Exception as e:
         print("❌ Airtable PATCH error:", e)
 
-# ---------------------- GHL SYNC (EMAIL ONLY LOOKUP) ---------------------- #
+# ---------------------- GHL SYNC (CORRECTED EMAIL LOOKUP) ---------------------- #
 
 def push_legacy_survey_to_ghl(email, answers):
 
@@ -169,46 +169,66 @@ def push_legacy_survey_to_ghl(email, answers):
         "Content-Type": "application/json"
     }
 
-    # ******** EMAIL-ONLY LOOKUP (ONLY CHANGE YOU REQUESTED) ********
+    # EMAIL-ONLY LOOKUP
     lookup_url = f"{GHL_BASE_URL}/contacts/?email={urllib.parse.quote(email)}&locationId={GHL_LOCATION_ID}"
 
     try:
         r = requests.get(lookup_url, headers=headers, timeout=20)
         r.raise_for_status()
-        contacts = r.json().get("contacts", [])
+        data = r.json()
+        
+        # Debug: See what GHL returns
+        print(f"🔍 GHL lookup response: {data}")
+        
+        contacts = data.get("contacts", [])
         if not contacts:
             print(f"❌ No GHL contact found for email: {email}")
             return
 
         contact = contacts[0]
         contact_id = contact.get("id")
-        name = contact.get("fullName") or "Unknown"
+        name = contact.get("firstName", "") + " " + contact.get("lastName", "")
+        name = name.strip() or contact.get("name") or "Unknown"
 
-        print(f"📌 Updating GHL Contact — {name} ({email})")
+        print(f"📌 Updating GHL Contact — {name} ({email}), ID: {contact_id}")
     except Exception as e:
-        print("❌ GHL lookup error:", e)
+        print(f"❌ GHL lookup error: {e}")
         return
 
     while len(answers) < 24:
         answers.append("No response")
     answers = answers[:24]
 
-    custom_fields = []
+    # BUILD THE CUSTOM FIELDS OBJECT (NOT AN ARRAY)
+    custom_fields = {}
     for i in range(24):
-        custom_fields.append({
-            "id": GHL_FIELDS[i],
-            "value": answers[i]
-        })
+        # GHL v1 expects a flat object, not an array
+        custom_fields[GHL_FIELDS[i]] = answers[i]
 
-    payload = {"customField": custom_fields}
+    # The payload should include customFields directly
+    payload = {
+        "customFields": custom_fields  # Note: plural "customFields"
+    }
 
     try:
         update_url = f"{GHL_BASE_URL}/contacts/{contact_id}"
+        
+        # Debug: See what we're sending
+        print(f"📤 Sending to GHL: {update_url}")
+        print(f"📦 Payload preview: {list(custom_fields.keys())[:3]}...")  # Show first 3 field names
+        
         r = requests.put(update_url, headers=headers, json=payload, timeout=20)
-        r.raise_for_status()
-        print("✅ GHL updated successfully (email lookup)")
+        
+        # Check the response more carefully
+        if r.status_code == 200:
+            print("✅ GHL updated successfully (email lookup)")
+            print(f"✅ Response: {r.json()}")
+        else:
+            print(f"❌ GHL update failed with status {r.status_code}")
+            print(f"❌ Response: {r.text}")
+            
     except Exception as e:
-        print("❌ GHL update error:", e)
+        print(f"❌ GHL update error: {e}")
 
 # ---------------------- ROUTES ---------------------- #
 
@@ -234,7 +254,7 @@ def submit_legacy_survey():
 
     save_legacy_survey_to_airtable(record_id, answers)
 
-    # ******** ONLY NEW CALL USING EMAIL-ONLY LOOKUP ********
+    # CORRECTED GHL CALL USING EMAIL-ONLY LOOKUP
     push_legacy_survey_to_ghl(email, answers)
 
     return jsonify({"redirect_url": LEGACY_SURVEY_REDIRECT_URL})

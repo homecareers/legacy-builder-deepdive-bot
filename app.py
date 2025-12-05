@@ -12,13 +12,15 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
-SURVEY_TABLE = os.getenv("AIRTABLE_PROSPECTS_TABLE") or "Survey Responses"
+# HARD-CODED to avoid table-name mismatch issues
+SURVEY_TABLE = "Survey Responses"
 
 LEGACY_SURVEY_REDIRECT_URL = (
     os.getenv("LEGACY_SURVEY_REDIRECT_URL")
     or os.getenv("NEXTSTEP_URL")
     or "https://poweredbylegacycode.com/activation"
 )
+
 
 # ---------------------- HELPERS ---------------------- #
 
@@ -120,7 +122,7 @@ def save_legacy_survey_to_airtable(record_id, answers):
 
 @app.route("/")
 def index():
-    return render_template("chat.html")  # MUST match your filename
+    return render_template("chat.html")
 
 
 @app.route("/submit", methods=["POST"])

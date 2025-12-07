@@ -20,14 +20,14 @@ GHL_API_KEY = os.getenv("GHL_API_KEY")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID")
 GHL_BASE_URL = "https://rest.gohighlevel.com/v1"
 
-DEEPDIVE_REDIRECT_URL = (
-    os.getenv("DEEPDIVE_REDIRECT_URL")
+LEGACY_SURVEY_REDIRECT_URL = (
+    os.getenv("LEGACY_SURVEY_REDIRECT_URL")
     or os.getenv("NEXTSTEP_URL")
     or "https://poweredbylegacycode.com/activation"
 )
 
-# Deep Dive = 24 questions (Q7–Q30)
-DEEPDIVE_QUESTION_COUNT = int(os.getenv("DEEPDIVE_QUESTION_COUNT", "24"))
+# Legacy Survey = 24 questions (Q7–Q30)
+LEGACY_SURVEY_QUESTION_COUNT = int(os.getenv("LEGACY_SURVEY_QUESTION_COUNT", "24"))
 
 # ---------------------- AIRTABLE HELPERS ---------------------- #
 def _h():
@@ -138,9 +138,9 @@ def get_or_create_prospect(email: str):
     return legacy_code, rec_id
 
 
-# ---------------------- SAVE DEEP DIVE — ORIGINAL AIRTABLE LOGIC ---------------------- #
-def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list):
-    deepdive_fields = [
+# ---------------------- SAVE LEGACY SURVEY — ORIGINAL AIRTABLE LOGIC ---------------------- #
+def save_legacysurvey_to_airtable(legacy_code: str, prospect_id: str, answers: list):
+    legacy_fields = [
         "Q7 Where do you show up online right now?",
         "Q8 Social Presence Snapshot",
         "Q9 Content Confidence",
@@ -173,7 +173,7 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
     }
 
     for idx, value in enumerate(answers):
-        fields[deepdive_fields[idx]] = value
+        fields[legacy_fields[idx]] = value
 
     r = requests.patch(
         _url(HQ_TABLE, prospect_id),
@@ -184,8 +184,8 @@ def save_deepdive_to_airtable(legacy_code: str, prospect_id: str, answers: list)
     return prospect_id
 
 
-# ---------------------- GHL SYNC — BATCH UPDATE, NO DELAYS ---------------------- #
-def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
+# ---------------------- GHL SYNC — LEGACY SURVEY ---------------------- #
+def push_legacysurvey_to_ghl(email: str, answers: list, legacy_code: str, prospect_id: str):
     try:
         headers = {
             "Authorization": f"Bearer {GHL_API_KEY}",
@@ -218,15 +218,15 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
 
         print(f"Found contact ID: {ghl_id} for email: {email}")
 
-        # Tag for Deep Dive completion
+        # Tag for Legacy Survey completion
         tag_response = requests.put(
             f"{GHL_BASE_URL}/contacts/{ghl_id}",
             headers=headers,
-            json={"tags": ["legacy deep dive submitted"]},
+            json={"tags": ["legacy survey submitted"]},
         )
         print(f"Tag Update Status: {tag_response.status_code}")
 
-        # BATCH UPDATE — using the same keys you had when it worked
+        # BATCH UPDATE — using same keys you had when it worked
         all_custom_fields = {
             "07_where_do_you_show_up_online_right_now": str(answers[0]),
             "q8_social_presence_snapshot": str(answers[1]),
@@ -261,7 +261,7 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
         )
 
         if field_response.status_code == 200:
-            print("✓ Successfully updated all 24 Deep Dive fields in GHL")
+            print("✓ Successfully updated all 24 Legacy Survey fields in GHL")
         else:
             print(f"Failed to update fields: {field_response.status_code}")
             print(f"Response: {field_response.text}")
@@ -275,7 +275,7 @@ def push_deepdive_to_ghl(email: str, answers: list, legacy_code: str, prospect_i
         return assigned
 
     except Exception as e:
-        print(f"GHL Deep Dive Sync Error: {e}")
+        print(f"GHL Legacy Survey Sync Error: {e}")
         return None
 
 
@@ -295,14 +295,15 @@ def submit():
         if not isinstance(answers, list):
             answers = []
 
-        while len(answers) < DEEPDIVE_QUESTION_COUNT:
+        while len(answers) < LEGACY_SURVEY_QUESTION_COUNT:
             answers.append("No response")
-        answers = answers[:DEEPDIVE_QUESTION_COUNT]
+        answers = answers[:LEGACY_SURVEY_QUESTION_COUNT]
 
         legacy_code, prospect_id = get_or_create_prospect(email)
-        save_deepdive_to_airtable(legacy_code, prospect_id, answers)
 
-        assigned_user_id = push_deepdive_to_ghl(
+        save_legacysurvey_to_airtable(legacy_code, prospect_id, answers)
+
+        assigned_user_id = push_legacysurvey_to_ghl(
             email=email,
             answers=answers,
             legacy_code=legacy_code,
@@ -310,14 +311,14 @@ def submit():
         )
 
         if assigned_user_id:
-            redirect_url = f"{DEEPDIVE_REDIRECT_URL}?uid={assigned_user_id}"
+            redirect_url = f"{LEGACY_SURVEY_REDIRECT_URL}?uid={assigned_user_id}"
         else:
-            redirect_url = DEEPDIVE_REDIRECT_URL
+            redirect_url = LEGACY_SURVEY_REDIRECT_URL
 
         return jsonify({"redirect_url": redirect_url})
 
     except Exception as e:
-        print(f"Deep Dive Submit Error: {e}")
+        print(f"Legacy Survey Submit Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
